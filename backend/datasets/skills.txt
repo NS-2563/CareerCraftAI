@@ -1,0 +1,21 @@
+Python
+Java
+JavaScript
+React
+Node.js
+SQL
+MySQL
+MongoDB
+HTML
+CSS
+Git
+GitHub
+Docker
+AWS
+FastAPI
+Django
+Flask
+Power BI
+Excel
+Machine Learning
+Data Analysis
