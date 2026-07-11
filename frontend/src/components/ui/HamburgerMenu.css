@@ -1,0 +1,42 @@
+.hamburger-menu {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  gap: 6px;
+
+  cursor: pointer;
+
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+
+  transition: background-color .2s ease;
+}
+
+.hamburger-menu:hover {
+  background: rgba(0,0,0,.05);
+}
+
+.hamburger-line {
+  width: 24px;
+  height: 3px;
+
+  background: #111827;
+
+  border-radius: 999px;
+
+  transition: all .25s ease;
+}
+
+.hamburger-menu.open .hamburger-line:first-child {
+  transform: translateY(4px) rotate(45deg);
+}
+
+.hamburger-menu.open .hamburger-line:last-child {
+  transform: translateY(-5px) rotate(-45deg);
+}

@@ -1,0 +1,1 @@
+# CareerCraftAI Schemas
