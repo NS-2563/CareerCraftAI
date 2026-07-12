@@ -6,3 +6,5 @@ export function useResumeContext() {
   if (!ctx) throw new Error("useResumeContext must be used within a ResumeProvider");
   return ctx;
 }
+
+

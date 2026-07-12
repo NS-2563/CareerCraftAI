@@ -11,3 +11,4 @@ export const templates = {
   corporate: CorporateTemplate,
   creative: CreativeTemplate,
 };
+

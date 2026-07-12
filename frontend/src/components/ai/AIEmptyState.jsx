@@ -16,3 +16,4 @@ export default function AIEmptyState({ title = "No suggestions yet" }) {
     </motion.div>
   );
 }
+

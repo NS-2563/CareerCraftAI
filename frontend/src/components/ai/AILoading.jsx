@@ -14,3 +14,4 @@ export default function AILoading({ message = "Generating..." }) {
     </motion.div>
   );
 }
+

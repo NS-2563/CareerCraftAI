@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 import ResumeBuilder from "@/components/resume/ResumeBuilder";
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 
 export default function ResumeStudio() {
   const location = useLocation();
@@ -30,5 +30,7 @@ export default function ResumeStudio() {
 
   return <ResumeBuilder />;
 }
+
+
 
 

@@ -4,7 +4,7 @@ import AddItemButton from "@/components/common/AddItemButton";
 import RemoveItemButton from "@/components/common/RemoveItemButton";
 import InputField from "@/components/common/InputField";
 
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 
 function InterestCard({
   interest,
@@ -86,3 +86,4 @@ export default function Interests() {
     </div>
   );
 }
+

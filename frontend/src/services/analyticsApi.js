@@ -7,3 +7,4 @@ const analyticsApi = {
 };
 
 export default analyticsApi;
+

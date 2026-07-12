@@ -2,12 +2,10 @@ import { QuestionProvider } from "@/modules/interview/services/providers/Questio
 
 /**
  * Stub provider.
- *
- * Extension point: later replace with backend API fetching.
+ * Will be replaced with backend API later.
  */
 export class CloudQuestionProvider extends QuestionProvider {
-  //async loadQuestions(_filters = {}) {
-    //return [];
- // }
+  async loadQuestions(_filters = {}) {
+    return [];
+  }
 }
-

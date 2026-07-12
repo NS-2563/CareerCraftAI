@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 
 export default function PersonalInfo() {
   const { resumeData, updateField } = useResumeContext();
@@ -102,3 +102,4 @@ export default function PersonalInfo() {
     </div>
   );
 }
+

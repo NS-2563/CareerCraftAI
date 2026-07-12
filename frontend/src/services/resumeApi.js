@@ -28,13 +28,17 @@ const mockResumes = [
    LIST
 ============================================================ */
 
-export async function listResumes() {
-  if (USE_MOCK_AI) {
-    await delay(400);
-    return mockResumes;
+
+
+export async function listResumes(archived = null) {
+  const params = {};
+
+  if (archived !== null) {
+    params.archived = archived;
   }
 
-  const { data } = await apiClient.get(API_BASE);
+  const { data } = await apiClient.get(API_BASE, { params });
+
   return data;
 }
 
@@ -234,3 +238,4 @@ export const resumeApi = {
 };
 
 export default resumeApi;
+

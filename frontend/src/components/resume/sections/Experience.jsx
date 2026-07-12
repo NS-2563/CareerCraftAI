@@ -7,7 +7,7 @@ import RemoveItemButton from "@/components/common/RemoveItemButton";
 import SectionCard from "@/components/common/SectionCard";
 import SectionHeader from "@/components/common/SectionHeader";
 
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 import useAI from "@/hooks/useAI";
 import { improveExperience as improveExperienceAI } from "@/services/aiService";
 
@@ -229,3 +229,4 @@ export default function Experience() {
     </div>
   );
 }
+

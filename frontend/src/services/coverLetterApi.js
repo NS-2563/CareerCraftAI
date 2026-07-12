@@ -198,3 +198,4 @@ export async function applyEditCoverLetter(coverLetterId, request, signal) {
     return { success: false, error: error.message };
   }
 }
+

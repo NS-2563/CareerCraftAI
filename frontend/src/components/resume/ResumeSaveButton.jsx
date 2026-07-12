@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Save, AlertCircle } from "lucide-react";
 import { updateResume } from "@/services/resumeApi";
 import { mapResumePayloadForBackend } from "@/utils/resumeDataCompat";
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 
 export default function ResumeSaveButton({ disabled }) {
   const { resumeId, resumeData } = useResumeContext();
@@ -68,3 +68,4 @@ export default function ResumeSaveButton({ disabled }) {
     </div>
   );
 }
+

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-import { useInterviewContext } from "@/modules/interview/context/InterviewContext";
+import { useInterviewContext } from "@/modules/interview/context/useInterviewContext";
 import { PRACTICE_MODE } from "@/modules/interview/services/constants/interviewConstants";
 
 const MODE_OPTIONS = [
@@ -386,4 +386,6 @@ export default function InterviewSetupWizard() {
     </div>
   );
 }
+
+
 

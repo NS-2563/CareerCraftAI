@@ -30,10 +30,10 @@ export default function CoverLetterBuilder() {
   const [selectedId, setSelectedId] = useState(null);
   const [coverLetter, setCoverLetter] = useState(initialCoverLetter);
   const [resumes, setResumes] = useState([]);
-  const [setVersions] = useState([]);
+  const [versions, setVersions] = useState([]);
 
   // Loading states
-  const [setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -212,40 +212,60 @@ export default function CoverLetterBuilder() {
   };
 
   // Generate with AI
-  const handleGenerate = async () => {
-    if (!selectedId) {
-      await handleCreate();
+const handleGenerate = async () => {
+  let id = selectedId;
+
+  if (!id) {
+    const createResult = await createCoverLetter(initialCoverLetter, null);
+
+    if (!createResult.success) {
+      setError(createResult.error);
+      return;
     }
 
-    setIsGenerating(true);
-    try {
-      const request = {
-        resume_id: coverLetter.resume_id,
-        job_title: coverLetter.job_title,
-        company_name: coverLetter.company_name,
-        job_description: coverLetter.job_description,
-        tone: coverLetter.tone,
-      };
+    id = createResult.data.id;
 
-      const result = await generateCoverLetter(request, null);
-      if (result.success) {
-        // Update the cover letter with generated content
-        const updateResult = await updateCoverLetter(
-          selectedId,
-          { content: result.data.content },
-          null
-        );
-        if (updateResult.success) {
-          setCoverLetter(updateResult.data);
-        }
-      } else {
-        setError(result.error);
+    setSelectedId(id);
+    setCoverLetter(createResult.data);
+
+    await loadCoverLetters();
+  }
+
+  setIsGenerating(true);
+
+  try {
+    const request = {
+      resume_id: coverLetter.resume_id,
+      job_title: coverLetter.job_title,
+      company_name: coverLetter.company_name,
+      job_description: coverLetter.job_description,
+      tone: coverLetter.tone,
+    };
+
+    const result = await generateCoverLetter(request, null);
+
+    if (result.success) {
+      const updateResult = await updateCoverLetter(
+        id,
+        {
+          ...coverLetter,
+          content: result.data.content,
+        },
+        null
+      );
+
+      if (updateResult.success) {
+        setCoverLetter(updateResult.data);
       }
-    } catch (err) {
-      setError(err.message);
+    } else {
+      setError(result.error);
     }
-    setIsGenerating(false);
-  };
+  } catch (err) {
+    setError(err.message);
+  }
+
+  setIsGenerating(false);
+};
 
   // AI Edit
   const handleEdit = async (action) => {
@@ -544,3 +564,4 @@ async function getVersionHistory(coverLetterId, signal) {
   const { getVersionHistory: getVersions } = await import("@/services/coverLetterApi");
   return getVersions(coverLetterId, signal);
 }
+

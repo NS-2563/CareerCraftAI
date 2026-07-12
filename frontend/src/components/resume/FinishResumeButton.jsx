@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 import { updateResume } from "@/services/resumeApi";
 import { mapResumePayloadForFinishBackend } from "@/utils/resumeFinishDataCompat";
 
@@ -71,3 +71,4 @@ export default function FinishResumeButton({ disabled }) {
     </div>
   );
 }
+

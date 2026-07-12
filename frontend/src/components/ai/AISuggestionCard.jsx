@@ -22,3 +22,4 @@ export default function AISuggestionCard({ suggestion, onClick, delay = 0 }) {
     </motion.button>
   );
 }
+

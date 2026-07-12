@@ -94,12 +94,23 @@ class ResumeService:
         return resume
 
     @staticmethod
-    def get_all(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[Resume]:
-        """Get all resumes for a user."""
-        return db.query(Resume).filter(
-            Resume.user_id == user_id,
-            Resume.is_archived == False,
-        ).offset(skip).limit(limit).all()
+    def get_all(
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    archived: bool | None = None,
+    ) -> List[Resume]:
+        """Get resumes for a user."""
+
+        query = db.query(Resume).filter(
+            Resume.user_id == user_id
+        )
+
+        if archived is not None:
+            query = query.filter(Resume.is_archived == archived)
+
+        return query.offset(skip).limit(limit).all()
 
     @staticmethod
     def update(db: Session, resume_id: int, user_id: int, resume_data: ResumeUpdate) -> Resume:

@@ -19,3 +19,4 @@ export async function checkHealth() {
 }
 
 export default { checkHealth };
+
