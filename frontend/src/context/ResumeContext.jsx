@@ -2,7 +2,7 @@ import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/lib/api";
 import { mapResumeFromBackend } from "@/utils/resumeDataCompat";
 
-const ResumeContext = createContext(null);
+import { ResumeContext } from "./ResumeContext.store";
 
 const STORAGE_KEY = "careercraft_resume";
 const TEMPLATE_STORAGE_KEY = "careercraft_resume_template";
@@ -588,4 +588,6 @@ export function ResumeProvider({ children }) {
 
   return <ResumeContext.Provider value={value}>{children}</ResumeContext.Provider>;
 }
+
+
 

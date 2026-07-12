@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { useResumeContext } from "@/context/ResumeContext";
+import { useResumeContext } from "@/context/useResumeContext";
 import steps from "./steps";
 import StepIndicator from "./StepIndicator";
 import NavigationButtons from "./NavigationButtons";
@@ -190,3 +190,4 @@ export default function ResumeWizard() {
     </div>
   );
 }
+

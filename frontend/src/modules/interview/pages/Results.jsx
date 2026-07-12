@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
-import { useInterviewContext } from "@/modules/interview/context/InterviewContext";
+import { useInterviewContext } from "@/modules/interview/context/useInterviewContext";
 
 function formatEpochMs(epochMs) {
   if (!epochMs || typeof epochMs !== "number") return "—";
@@ -183,5 +183,7 @@ export default function InterviewResultsPage() {
     </div>
   );
 }
+
+
 
 

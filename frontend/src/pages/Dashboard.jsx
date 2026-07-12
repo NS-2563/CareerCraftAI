@@ -28,7 +28,11 @@ export default function Dashboard() {
   // =========================
   // DATA (REACT QUERY)
   // =========================
-  const { data: resumes = [], isLoading } = useResumes(searchQuery, sortBy);
+  const { data: resumes = [], isLoading } = useResumes(
+  searchQuery,
+  sortBy,
+  activeFilter
+);
 
   // =========================
   // MUTATIONS
@@ -173,4 +177,6 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
 

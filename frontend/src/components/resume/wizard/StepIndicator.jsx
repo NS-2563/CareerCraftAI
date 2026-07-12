@@ -83,3 +83,4 @@ export default function StepIndicator({ steps, currentStep }) {
     </div>
   );
 }
+

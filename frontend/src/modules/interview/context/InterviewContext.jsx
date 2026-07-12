@@ -3,7 +3,7 @@ import { createContext, useMemo, useState, useCallback } from "react";
 import { buildEngine } from "@/modules/interview/context/interviewEngine";
 import { PRACTICE_MODE, SESSION_STATUS } from "@/modules/interview/services/constants/interviewConstants";
 
-const InterviewContext = createContext(null);
+export const InterviewContext = createContext(null);
 
 export function InterviewProvider({ children }) {
   const engine = useMemo(() => buildEngine(), []);
@@ -215,5 +215,7 @@ export function InterviewProvider({ children }) {
 
   return <InterviewContext.Provider value={value}>{children}</InterviewContext.Provider>;
 }
+
+
 
 

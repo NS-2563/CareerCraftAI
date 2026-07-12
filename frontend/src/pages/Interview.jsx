@@ -1,4 +1,5 @@
-import { InterviewProvider, useInterviewContext } from "@/modules/interview/context/InterviewContext";
+import { InterviewProvider } from "@/modules/interview/context/InterviewContext";
+import { useInterviewContext } from "@/modules/interview/context/useInterviewContext";
 import SetupWizard from "@/modules/interview/pages/SetupWizard";
 import InterviewPracticePage from "@/modules/interview/pages/Practice";
 import InterviewResultsPage from "@/modules/interview/pages/Results";
@@ -30,3 +31,4 @@ export default function Interview() {
     </InterviewProvider>
   );
 }
+

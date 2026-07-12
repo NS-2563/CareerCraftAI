@@ -13,3 +13,4 @@ export const localQuestions = [
   ...behavioralQuestions,
   ...communicationQuestions,
 ];
+

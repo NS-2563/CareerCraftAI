@@ -61,3 +61,4 @@ export default function SkillGap({ skillGap }) {
     </section>
   );
 }
+

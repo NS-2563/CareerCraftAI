@@ -147,3 +147,4 @@ const CoverLetterPreview = forwardRef(function CoverLetterPreview(
 });
 
 export default CoverLetterPreview;
+

@@ -54,9 +54,18 @@ def list_archived_resumes(
 def list_resumes(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+    archived: bool | None = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    resumes = ResumeService.get_all(
+        db,
+        current_user.id,
+        skip,
+        limit,
+        archived,
+    )
+    return resumes
     """List all resumes for the current user."""
     resumes = ResumeService.get_all(db, current_user.id, skip, limit)
     return resumes

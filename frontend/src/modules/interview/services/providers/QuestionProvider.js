@@ -13,7 +13,9 @@ export class QuestionProvider {
    * @returns {Promise<Array<{id:string,prompt:string,category?:string,topic?:string,difficulty?:string}>>}
    */
   async loadQuestions() {
-    throw new Error("QuestionProvider.loadQuestions(filters) not implemented");
+    throw new Error("QuestionProvider.loadQuestions() not implemented");
   }
 }
+
+
 

@@ -1,12 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
 import resumeApi from "@/services/resumeApi";
 
-export function useResumes(searchQuery = "", sortBy = "updated_at") {
+export function useResumes(
+  searchQuery = "",
+  sortBy = "updated_at",
+  activeFilter = "all"
+) {
   return useQuery({
-    queryKey: ["resumes", searchQuery, sortBy],
+    queryKey: ["resumes", searchQuery, sortBy, activeFilter],
 
     queryFn: async () => {
-      let resumes = await resumeApi.listResumes();
+      let archived = null;
+
+if (activeFilter === "archived") {
+  archived = true;
+} else if (
+  activeFilter === "all" ||
+  activeFilter === "draft" ||
+  activeFilter === "completed"
+) {
+  archived = false;
+}
+
+let resumes = await resumeApi.listResumes(archived);
+      console.log(resumes);
 
       if (searchQuery) {
         resumes = resumes.filter((r) =>
@@ -24,4 +41,6 @@ export function useResumes(searchQuery = "", sortBy = "updated_at") {
     },
   });
 }
+
+
 

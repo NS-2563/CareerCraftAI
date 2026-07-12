@@ -339,3 +339,4 @@ function SidebarContent({ items, placeholders, collapsed, onItemClick }) {
     </nav>
   );
 }
+
