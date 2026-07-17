@@ -14,6 +14,7 @@ from app.routers import auth, resume, ai, user
 from app.routers.cover_letter import router as cover_letter_router
 from app.routers.career import router as career_router
 from app.routers.career_history import router as career_history_router
+from app.routers.job_tracker import router as job_tracker_router
 
 
 
@@ -56,6 +57,7 @@ app.include_router(user.router)
 app.include_router(cover_letter_router)
 app.include_router(career_router)
 app.include_router(career_history_router)
+app.include_router(job_tracker_router)
 
 
 # Health endpoint
