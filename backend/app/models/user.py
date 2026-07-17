@@ -30,6 +30,7 @@ class User(Base):
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     cover_letters = relationship("CoverLetter", back_populates="user", cascade="all, delete-orphan")
     career_reports = relationship("CareerReport", back_populates="user", cascade="all, delete-orphan")
+    job_applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("email", name="uix_email"),
