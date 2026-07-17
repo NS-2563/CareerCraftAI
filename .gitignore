@@ -1,1 +1,45 @@
-node_modules
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# SQLite
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# ----------------------------
+# Node
+# ----------------------------
+node_modules/
+
+# Build output
+dist/
+build/
+
+# ----------------------------
+# VS Code
+# ----------------------------
+.vscode/
+
+# ----------------------------
+# Environment variables
+# ----------------------------
+.env
+.env.*
+
+# ----------------------------
+# OS files
+# ----------------------------
+.DS_Store
+Thumbs.db
