@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.database import get_db
-from app.dependencies import get_current_active_user
+from app.core.database import get_db
+from app.core.dependencies import get_current_active_user
 from app.models.user import User
 from app.schemas.user import (
     LoginRequest,
@@ -13,7 +13,7 @@ from app.schemas.user import (
     GoogleOAuthRequest,
     GoogleOAuthResponse,
 )
-from app.services.auth_service import AuthService, GoogleOAuthService
+from app.auth.service import AuthService, GoogleOAuthService
 from app.utils.response import success_response
 from app.utils.exceptions import AppException
 

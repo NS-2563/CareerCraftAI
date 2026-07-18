@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, status
 
-from app.dependencies import get_current_active_user
+from app.core.dependencies import get_current_active_user
 from app.models.user import User
 from app.schemas.user import UserResponse, UserUpdate
-from app.services.auth_service import AuthService
+from app.auth.service import AuthService
 from app.utils.response import success_response
 
 router = APIRouter(prefix="/api/user", tags=["User"])

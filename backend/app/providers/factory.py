@@ -2,7 +2,7 @@
 import logging
 from typing import Optional
 
-from app.config import settings
+from app.core.config import settings
 from app.providers.base import AIProvider
 
 logger = logging.getLogger(__name__)
