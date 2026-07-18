@@ -12,7 +12,7 @@ from app.utils.response import success_response
 # Import routers
 from app.auth.router import router as auth_router
 
-from app.routers.resume import router as resume_router
+from app.resume.router import router as resume_router
 from app.routers.ai import router as ai_router
 from app.routers.user import router as user_router
 from app.routers.cover_letter import router as cover_letter_router

@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.models.user import User
-from app.models.resume import Resume
+from app.resume.models import Resume
 from app.schemas.cover_letter import (
     CoverLetterCreate,
     CoverLetterUpdate,

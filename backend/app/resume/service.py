@@ -4,8 +4,8 @@ from sqlalchemy import or_
 from typing import Optional, List
 import json
 
-from app.models.resume import Resume
-from app.schemas.resume import ResumeCreate, ResumeUpdate
+from app.resume.models import Resume
+from app.resume.schemas import ResumeCreate, ResumeUpdate
 from app.utils.exceptions import NotFoundException, ForbiddenException
 
 

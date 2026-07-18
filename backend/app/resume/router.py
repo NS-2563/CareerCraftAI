@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.models.user import User
-from app.schemas.resume import (
+from app.resume.schemas import (
     ResumeCreate,
     ResumeUpdate,
     ResumeResponse,
@@ -13,10 +13,10 @@ from app.schemas.resume import (
     ResumeRenameRequest,
     VersionRestoreRequest,
 )
-from app.services.resume_service import ResumeService
+from app.resume.service import ResumeService
 from app.utils.response import success_response, paginated_response
 from app.utils.exceptions import NotFoundException
-from app.utils.resume_serializer import serialize_resume
+from app.resume.serializer import serialize_resume
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
