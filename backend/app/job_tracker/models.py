@@ -1,5 +1,5 @@
 from sqlalchemy import Enum
-from app.schemas.job_tracker import JobStatus
+from app.job_tracker.schemas import JobStatus
 from sqlalchemy import (
     Column,
     Integer,

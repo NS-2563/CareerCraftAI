@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Literal, Optional
 from sqlalchemy import Integer, case, func, or_
 from sqlalchemy.orm import Session
 
-from app.models.job_application import JobApplication
-from app.schemas.job_tracker import JobApplicationCreate, JobApplicationUpdate, JobStatsResponse, JobStatus
+from app.job_tracker.models import JobApplication
+from app.job_tracker.schemas import JobApplicationCreate, JobApplicationUpdate, JobStatsResponse, JobStatus
 
 
 SortBy = Literal["created_at", "company", "job_title", "applied_date"]

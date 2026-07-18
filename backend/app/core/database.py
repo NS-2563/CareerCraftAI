@@ -29,9 +29,10 @@ def init_db():
     """Initialize database tables."""
 
     # Import models in correct order to resolve relationships
-    from app.models.user import User
+    from app.user.models import User
     from app.resume.models import Resume
-    from app.models.career_report import CareerReport
-    from app.models.job_application import JobApplication
+    from app.cover_letter.models import CoverLetter
+    from app.career.models import CareerReport
+    from app.job_tracker.models import JobApplication
 
     Base.metadata.create_all(bind=engine)

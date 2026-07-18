@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
-from app.models.career_report import CareerReport
+from app.career.models import CareerReport
 
 
 def save_report(

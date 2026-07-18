@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.models.user import User
+from app.user.models import User
 from app.career.services.analytics_service import get_analytics
 
 from app.career.services.history_service import (

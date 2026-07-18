@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 import json
 
-from app.models.cover_letter import CoverLetter
-from app.schemas.cover_letter import CoverLetterCreate, CoverLetterUpdate
+from app.cover_letter.models import CoverLetter
+from app.cover_letter.schemas import CoverLetterCreate, CoverLetterUpdate
 from app.utils.exceptions import NotFoundException
 
 

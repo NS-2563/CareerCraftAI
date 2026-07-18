@@ -258,8 +258,8 @@ class GeminiProvider(AIProvider):
     ) -> str:
         """Generate a cover letter.
 
-        Note: Cover-letter prompt builders live in `app/routers/cover_letter.py` today.
-        This provider implements a minimal prompt here to satisfy the BaseProvider contract.
+        The application constructs the production prompts in the Cover Letter feature.
+        This method exists to satisfy the BaseProvider interface.
         """
 
         resume_text = ""

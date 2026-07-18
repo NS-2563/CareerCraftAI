@@ -2,7 +2,7 @@ from datetime import timedelta
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.user import User
+from app.user.models import User
 from app.core.dependencies import (
     get_password_hash,
     verify_password,
@@ -10,7 +10,7 @@ from app.core.dependencies import (
     create_refresh_token,
     decode_token,
 )
-from app.schemas.user import Token, UserCreate, UserResponse
+from app.user.schemas import Token, UserCreate, UserResponse
 from app.utils.exceptions import (
     NotFoundException,
     ConflictException,

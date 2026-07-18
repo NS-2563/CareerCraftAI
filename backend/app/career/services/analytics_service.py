@@ -1,4 +1,4 @@
-from app.models.career_report import CareerReport
+from app.career.models import CareerReport
 
 
 def get_analytics(db, user_id: int):

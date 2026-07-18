@@ -13,12 +13,12 @@ from app.utils.response import success_response
 from app.auth.router import router as auth_router
 
 from app.resume.router import router as resume_router
-from app.routers.ai import router as ai_router
-from app.routers.user import router as user_router
-from app.routers.cover_letter import router as cover_letter_router
-from app.routers.career import router as career_router
-from app.routers.career_history import router as career_history_router
-from app.routers.job_tracker import router as job_tracker_router
+from app.ai.router import router as ai_router
+from app.user.router import router as user_router
+from app.cover_letter.router import router as cover_letter_router
+from app.career.router import router as career_router
+from app.career.history_router import router as career_history_router
+from app.job_tracker.router import router as job_tracker_router
 
 
 

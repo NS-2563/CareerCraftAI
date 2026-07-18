@@ -4,9 +4,9 @@ from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.models.user import User
+from app.user.models import User
 from app.resume.models import Resume
-from app.schemas.cover_letter import (
+from app.cover_letter.schemas import (
     CoverLetterCreate,
     CoverLetterUpdate,
     CoverLetterResponse,
@@ -16,8 +16,8 @@ from app.schemas.cover_letter import (
     CoverLetterAIEditsRequest,
     VersionRestoreRequest,
 )
-from app.schemas.cover_letter_ai import GenerateCoverLetterRequest, GenerateCoverLetterResponse, AICoverLetterEditRequest, AICoverLetterEditResponse
-from app.services.cover_letter_service import CoverLetterService
+from app.cover_letter.ai_schemas import GenerateCoverLetterRequest, GenerateCoverLetterResponse, AICoverLetterEditRequest, AICoverLetterEditResponse
+from app.cover_letter.service import CoverLetterService
 from app.providers.gemini import GeminiProvider
 
 router = APIRouter(prefix="/api/cover-letter", tags=["CoverLetter"])
@@ -360,7 +360,7 @@ def generate_for_existing(
     content = provider._generate_content(prompt)
 
     # Update the cover letter
-    from app.schemas.cover_letter import CoverLetterUpdate
+    from app.cover_letter.schemas import CoverLetterUpdate
     update_data = CoverLetterUpdate(
         content=content,
         job_title=request.job_title,
@@ -426,7 +426,7 @@ def apply_ai_edit(
     new_content = provider._generate_content(prompt)
 
     # Update the cover letter
-    from app.schemas.cover_letter import CoverLetterUpdate
+    from app.cover_letter.schemas import CoverLetterUpdate
     update_data = CoverLetterUpdate(content=new_content)
 
     cover_letter = CoverLetterService.update(db, cover_letter_id, current_user.id, update_data)

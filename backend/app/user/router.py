@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, status
 
 from app.core.dependencies import get_current_active_user
-from app.models.user import User
-from app.schemas.user import UserResponse, UserUpdate
+from app.user.models import User
+from app.user.schemas import UserResponse, UserUpdate
 from app.auth.service import AuthService
 from app.utils.response import success_response
 

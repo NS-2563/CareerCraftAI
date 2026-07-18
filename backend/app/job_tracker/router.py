@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.models.user import User
+from app.user.models import User
 from app.job_tracker.services.job_tracker_service import JobTrackerService
-from app.schemas.job_tracker import (
+from app.job_tracker.schemas import (
     JobApplicationCreate,
     JobApplicationResponse,
     JobApplicationUpdate,
