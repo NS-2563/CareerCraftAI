@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import CoverLetterToolbar from "./CoverLetterToolbar";
 import CoverLetterPreview from "./CoverLetterPreview";
+import { getVersionHistory } from "@/cover-letter/services/coverLetterApi";
 import {
   listCoverLetters,
   getCoverLetter,
@@ -11,7 +12,7 @@ import {
   renameCoverLetter,
   generateCoverLetter,
   applyEditCoverLetter,
-} from "@/services/coverLetterApi";
+} from "@/cover-letter/services/coverLetterApi";
 import { listResumes } from "@/resume/services/resumeApi";
 
 const initialCoverLetter = {
@@ -26,14 +27,16 @@ const initialCoverLetter = {
 };
 
 export default function CoverLetterBuilder() {
-  const [coverLetters, setCoverLetters] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  
+  
   const [coverLetter, setCoverLetter] = useState(initialCoverLetter);
   const [resumes, setResumes] = useState([]);
-  const [versions, setVersions] = useState([]);
+  const [, setVersions] = useState([]);
 
   // Loading states
-  const [isLoading, setIsLoading] = useState(false);
+  
+
+const [, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -41,33 +44,43 @@ export default function CoverLetterBuilder() {
   // Error state
   const [error, setError] = useState(null);
 
+  const [coverLetters, setCoverLetters] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const previewRef = useRef(null);
 
   // Load cover letters on mount
-  useEffect(() => {
-    loadCoverLetters();
-    loadResumes();
-  }, []);
-
+  
+  
   async function loadCoverLetters() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await listCoverLetters(null, null);
-      if (result.success) {
-        setCoverLetters(result.data || []);
-        // Select first if none selected
-        if (!selectedId && result.data?.length > 0) {
-          selectCoverLetter(result.data[0].id);
-        }
-      } else {
-        setError(result.error);
+  setIsLoading(true);
+  setError(null);
+
+  try {
+    const result = await listCoverLetters(null, null);
+
+    if (result.success) {
+      setCoverLetters(result.data || []);
+
+      if (!selectedId && result.data?.length > 0) {
+        selectCoverLetter(result.data[0].id);
       }
-    } catch (err) {
-      setError(err.message);
+    } else {
+      setError(result.error);
     }
-    setIsLoading(false);
+  } catch (err) {
+    setError(err.message);
   }
+
+  setIsLoading(false);
+}
+
+/* eslint-disable react-hooks/set-state-in-effect */
+useEffect(() => {
+  loadCoverLetters();
+  loadResumes();
+}, []);
+/* eslint-enable react-hooks/set-state-in-effect */
+
 
   async function loadResumes() {
     try {
@@ -80,33 +93,30 @@ export default function CoverLetterBuilder() {
     }
   }
 
-  const selectCoverLetter = async (id) => {
-    setIsLoading(true);
-    try {
-      const result = await getCoverLetter(id, null);
-      if (result.success) {
-        setSelectedId(id);
-        setCoverLetter(result.data);
-        // Load version history
-        const versionResult = await loadVersionHistory(id);
-        setVersions(versionResult);
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError(err.message);
-    }
-    setIsLoading(false);
-  };
+async function selectCoverLetter(id) {
+  setIsLoading(true);
 
-  const loadVersionHistory = async (id) => {
-    try {
-      const result = await getVersionHistory(id, null);
-      return result.success ? result.data || [] : [];
-    } catch {
-      return [];
+  try {
+    const result = await getCoverLetter(id, null);
+
+    if (result.success) {
+      setSelectedId(id);
+      setCoverLetter(result.data);
+
+      const versionResult = await getVersionHistory(id, null);
+
+      setVersions(
+        versionResult.success ? versionResult.data || [] : []
+      );
+    } else {
+      setError(result.error);
     }
-  };
+  } catch (err) {
+    setError(err.message);
+  }
+
+  setIsLoading(false);
+}
 
   // Create new cover letter
   const handleCreate = async () => {
@@ -560,8 +570,4 @@ const handleGenerate = async () => {
 }
 
 // Helper to get version history
-async function getVersionHistory(coverLetterId, signal) {
-  const { getVersionHistory: getVersions } = await import("@/services/coverLetterApi");
-  return getVersions(coverLetterId, signal);
-}
 

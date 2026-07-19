@@ -4,13 +4,13 @@ import { useNavigate } from "react-router-dom";
 
 import HamburgerMenu from "@/components/ui/HamburgerMenu";
 
-import CareerAssessmentForm from "@/components/career/CareerAssessmentForm";
-import CareerDashboard from "@/components/career/CareerDashboard";
-import LoadingState from "@/components/career/LoadingState";
-import EmptyState from "@/components/career/EmptyState";
-import ErrorState from "@/components/career/ErrorState";
+import CareerAssessmentForm from "@/career/components/CareerAssessmentForm";
+import CareerDashboard from "@/career/components/CareerDashboard";
+import LoadingState from "@/career/components/LoadingState";
+import EmptyState from "@/career/components/EmptyState";
+import ErrorState from "@/career/components/ErrorState";
 
-import careerApi from "@/services/careerApi";
+import careerApi from "@/career/services/careerApi";
 
 export default function Career() {
   const [loading, setLoading] = useState(false);

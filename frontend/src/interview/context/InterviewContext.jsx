@@ -2,7 +2,7 @@ import { createContext, useMemo, useState, useCallback } from "react";
 
 import { buildEngine } from "@/interview/context/interviewEngine";
 import { PRACTICE_MODE, SESSION_STATUS } from "@/interview/services/constants/interviewConstants";
-
+/* eslint-disable react-refresh/only-export-components */
 export const InterviewContext = createContext(null);
 
 export function InterviewProvider({ children }) {

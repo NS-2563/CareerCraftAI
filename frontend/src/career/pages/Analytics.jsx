@@ -1,8 +1,8 @@
 /* eslint react-hooks/set-state-in-effect: "off" */
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import AnalyticsSkeleton from "@/components/career/AnalyticsSkeleton";
-import analyticsApi from "@/services/analyticsApi";
+import AnalyticsSkeleton from "@/career/components/AnalyticsSkeleton";
+import analyticsApi from "@/career/services/analyticsApi";
 import {
   ResponsiveContainer,
   LineChart,

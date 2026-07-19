@@ -5,9 +5,9 @@ import AppLayout from "./layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import ResumeAnalysis from "@/resume/pages/ResumeAnalysis";
 import ResumeStudio from "@/resume/pages/ResumeStudio";
-import Career from "./pages/Career";
-import CareerHistory from "./pages/CareerHistory";
-import Analytics from "@/pages/Analytics";
+import Career from "@/career/pages/Career";
+import CareerHistory from "@/career/pages/CareerHistory";
+import Analytics from "@/career/pages/Analytics";
 import Interview from "./pages/Interview";
 import InterviewDashboardPage from "@/interview/pages/Dashboard";
 import InterviewPracticePage from "@/interview/pages/Practice";
@@ -18,7 +18,7 @@ import Communication from "./pages/Communication";
 import Settings from "./pages/Settings";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
-import CoverLetterStudio from "./pages/CoverLetterStudio";
+import CoverLetterStudio from "@/cover-letter/pages/CoverLetterStudio";
 import NotFound from "./pages/NotFound";
 
 function App() {

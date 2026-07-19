@@ -1,10 +1,10 @@
 /* eslint react-hooks/set-state-in-effect: "off" */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import historyApi from "@/services/historyApi";
-import CareerHistoryEmpty from "@/components/career/CareerHistoryEmpty";
+import historyApi from "@/career/services/historyApi";
+import CareerHistoryEmpty from "@/career/components/CareerHistoryEmpty";
 import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
-import LoadingState from "@/components/career/LoadingState";
+import LoadingState from "@/career/components/LoadingState";
 import { toast } from "sonner";
 export default function CareerHistory() {
   const [reports, setReports] = useState([]);

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 
 import { DialogTrigger } from "@/components/ui/dialog";
 import { Alert } from "@/components/ui/alert";

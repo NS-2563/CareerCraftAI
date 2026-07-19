@@ -5,7 +5,7 @@ import { QuestionProvider } from "@/interview/services/providers/QuestionProvide
  * Will be replaced with backend API later.
  */
 export class CloudQuestionProvider extends QuestionProvider {
-  async loadQuestions(_filters = {}) {
+  async loadQuestions() {
     return [];
   }
 }

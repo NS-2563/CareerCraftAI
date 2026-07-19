@@ -288,7 +288,7 @@ export default function JobForm({
     </form>
   );
 }
-
+/* eslint-disable react-refresh/only-export-components */
 export { initialValues as initialValues };
 
 
