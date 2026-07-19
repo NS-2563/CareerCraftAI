@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-import ResumeBuilder from "@/components/resume/ResumeBuilder";
+import ResumeBuilder from "@/resume/components/ResumeBuilder";
 import { useResumeContext } from "@/resume/context/useResumeContext";
 
 export default function ResumeStudio() {
