@@ -1,9 +1,9 @@
-import { InterviewProvider } from "@/modules/interview/context/InterviewContext";
-import { useInterviewContext } from "@/modules/interview/context/useInterviewContext";
-import SetupWizard from "@/modules/interview/pages/SetupWizard";
-import InterviewPracticePage from "@/modules/interview/pages/Practice";
-import InterviewResultsPage from "@/modules/interview/pages/Results";
-import { SESSION_STATUS } from "@/modules/interview/services/constants/interviewConstants";
+import { InterviewProvider } from "@/interview/context/InterviewContext";
+import { useInterviewContext } from "@/interview/context/useInterviewContext";
+import SetupWizard from "@/interview/pages/SetupWizard";
+import InterviewPracticePage from "@/interview/pages/Practice";
+import InterviewResultsPage from "@/interview/pages/Results";
+import { SESSION_STATUS } from "@/interview/services/constants/interviewConstants";
 
 function InterviewInner() {
   const { sessionStatus } = useInterviewContext();

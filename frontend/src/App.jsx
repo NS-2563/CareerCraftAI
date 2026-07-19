@@ -9,9 +9,9 @@ import Career from "./pages/Career";
 import CareerHistory from "./pages/CareerHistory";
 import Analytics from "@/pages/Analytics";
 import Interview from "./pages/Interview";
-import InterviewDashboardPage from "@/modules/interview/pages/Dashboard";
-import InterviewPracticePage from "@/modules/interview/pages/Practice";
-import InterviewResultsPage from "@/modules/interview/pages/Results";
+import InterviewDashboardPage from "@/interview/pages/Dashboard";
+import InterviewPracticePage from "@/interview/pages/Practice";
+import InterviewResultsPage from "@/interview/pages/Results";
 
 import Jobs from "./pages/Jobs";
 import Communication from "./pages/Communication";

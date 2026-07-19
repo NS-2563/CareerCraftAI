@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 
-import { useInterviewContext } from "@/modules/interview/context/useInterviewContext";
+import { useInterviewContext } from "@/interview/context/useInterviewContext";
 
 function getAnswerForQuestion(session, questionId) {
   if (!session?.answers?.length || !questionId) return null;

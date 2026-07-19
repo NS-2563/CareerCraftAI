@@ -1,4 +1,4 @@
-import { shuffleArray } from "@/modules/interview/services/utils/random";
+import { shuffleArray } from "@/interview/services/utils/random";
 
 /**
  * @typedef {Object} QuestionLoaderFilters

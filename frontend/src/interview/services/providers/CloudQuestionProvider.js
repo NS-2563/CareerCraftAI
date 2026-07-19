@@ -1,4 +1,4 @@
-import { QuestionProvider } from "@/modules/interview/services/providers/QuestionProvider";
+import { QuestionProvider } from "@/interview/services/providers/QuestionProvider";
 
 /**
  * Stub provider.

@@ -1,7 +1,7 @@
 import { createContext, useMemo, useState, useCallback } from "react";
 
-import { buildEngine } from "@/modules/interview/context/interviewEngine";
-import { PRACTICE_MODE, SESSION_STATUS } from "@/modules/interview/services/constants/interviewConstants";
+import { buildEngine } from "@/interview/context/interviewEngine";
+import { PRACTICE_MODE, SESSION_STATUS } from "@/interview/services/constants/interviewConstants";
 
 export const InterviewContext = createContext(null);
 

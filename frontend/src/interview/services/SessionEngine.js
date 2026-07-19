@@ -2,7 +2,7 @@ import {
   DEFAULT_QUESTION_COUNT,
   SESSION_STATUS,
   PRACTICE_MODE,
-} from "@/modules/interview/services/constants/interviewConstants";
+} from "@/interview/services/constants/interviewConstants";
 
 /**
  * Framework-independent session engine.
