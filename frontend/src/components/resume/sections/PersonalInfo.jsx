@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 export default function PersonalInfo() {
   const { resumeData, updateField } = useResumeContext();

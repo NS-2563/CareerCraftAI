@@ -3,7 +3,7 @@
 //
 // DO NOT duplicate business logic: this only appends `completed:true`.
 
-import { mapResumePayloadForBackend } from "@/utils/resumeDataCompat";
+import { mapResumePayloadForBackend } from "@/resume/utils/resumeDataCompat";
 
 export function mapResumePayloadForFinishBackend(resumeData) {
   const payload = mapResumePayloadForBackend(resumeData);

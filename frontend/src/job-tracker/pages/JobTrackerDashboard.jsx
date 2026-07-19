@@ -25,11 +25,11 @@ import JobTable from "../components/JobTable";
 import JobTableLoading from "../components/JobTableLoading";
 import JobTableEmpty from "../components/JobTableEmpty";
 
-import { useJob } from "@/modules/jobTracker/hooks/useJob";
-import { useJobStats } from "@/modules/jobTracker/hooks/useJobStats";
-import { useJobs } from "@/modules/jobTracker/hooks/useJobs";
-import { useUpdateJob } from "@/modules/jobTracker/hooks/useUpdateJob";
-import { useDeleteJob } from "@/modules/jobTracker/hooks/useDeleteJob";
+import { useJob } from "@/job-tracker/hooks/useJob";
+import { useJobStats } from "@/job-tracker/hooks/useJobStats";
+import { useJobs } from "@/job-tracker/hooks/useJobs";
+import { useUpdateJob } from "@/job-tracker/hooks/useUpdateJob";
+import { useDeleteJob } from "@/job-tracker/hooks/useDeleteJob";
 
 import CreateJobDialog from "../components/CreateJobDialog";
 import JobForm, { initialValues as jobFormInitialValues } from "../components/JobForm";

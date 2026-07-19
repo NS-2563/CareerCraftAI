@@ -12,7 +12,7 @@ import DateField from "@/components/common/DateField";
 import CheckboxField from "@/components/common/CheckboxField";
 import TextareaField from "@/components/common/TextareaField";
 
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 function EducationCard({ education, index, removable, onRemove }) {
   const { updateArrayItem } = useResumeContext();

@@ -12,7 +12,7 @@ import {
   generateCoverLetter,
   applyEditCoverLetter,
 } from "@/services/coverLetterApi";
-import { listResumes } from "@/services/resumeApi";
+import { listResumes } from "@/resume/services/resumeApi";
 
 const initialCoverLetter = {
   title: "Untitled Cover Letter",

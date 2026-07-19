@@ -6,7 +6,7 @@ import { Toaster } from "sonner";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { ResumeProvider } from "./context/ResumeContext";
+import { ResumeProvider } from "./resume/context/ResumeContext";
 import App from "./App";
 import BackendStatus from "./components/BackendStatus";
 

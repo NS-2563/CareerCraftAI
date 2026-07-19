@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save, AlertCircle } from "lucide-react";
-import { updateResume } from "@/services/resumeApi";
-import { mapResumePayloadForBackend } from "@/utils/resumeDataCompat";
-import { useResumeContext } from "@/context/useResumeContext";
+import { updateResume } from "@/resume/services/resumeApi";
+import { mapResumePayloadForBackend } from "@/resume/utils/resumeDataCompat";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 export default function ResumeSaveButton({ disabled }) {
   const { resumeId, resumeData } = useResumeContext();

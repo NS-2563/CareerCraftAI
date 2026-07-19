@@ -3,7 +3,7 @@ import ResumeToolbar from "./ResumeToolbar";
 import ResumePreview from "./ResumePreview";
 import ResumeWizard from "./wizard/ResumeWizard";
 import AIAssistantPanel from "@/components/ai/AIAssistantPanel";
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 export default function ResumeBuilder() {
   const { selectedTemplate, setSelectedTemplate } = useResumeContext();

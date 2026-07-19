@@ -1,4 +1,4 @@
-import JobTrackerDashboard from "@/modules/jobTracker/pages/JobTrackerDashboard";
+import JobTrackerDashboard from "@/job-tracker/pages/JobTrackerDashboard";
 
 export default function Jobs() {
   return <JobTrackerDashboard />;

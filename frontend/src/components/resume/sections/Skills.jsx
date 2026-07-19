@@ -9,7 +9,7 @@ import AddItemButton from "@/components/common/AddItemButton";
 import RemoveItemButton from "@/components/common/RemoveItemButton";
 import InputField from "@/components/common/InputField";
 
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 function SkillCard({ skill, index, removable, onRemove, updateArrayItem }) {
   return (

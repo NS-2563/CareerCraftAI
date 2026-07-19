@@ -7,7 +7,7 @@ import RemoveItemButton from "@/components/common/RemoveItemButton";
 import InputField from "@/components/common/InputField";
 import DateField from "@/components/common/DateField";
 
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 function CertificationCard({
   certification,

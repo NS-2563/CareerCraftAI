@@ -5,10 +5,10 @@ import ResumeGrid from "@/components/dashboard/ResumeGrid";
 import EmptyState from "@/components/dashboard/EmptyState";
 import VersionHistoryModal from "@/components/dashboard/VersionHistoryModal";
 import RenameModal from "@/components/dashboard/RenameModal";
-import { getVersions } from "@/services/resumeApi";
+import { getVersions } from "@/resume/services/resumeApi";
 
-import { useResumes } from "@/hooks/useResumes";
-import { useResumeMutations } from "@/hooks/useResumeMutations";
+import { useResumes } from "@/resume/hooks/useResumes";
+import { useResumeMutations } from "@/resume/hooks/useResumeMutations";
 
 export default function Dashboard() {
   // =========================

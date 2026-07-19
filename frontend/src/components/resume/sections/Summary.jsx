@@ -1,7 +1,7 @@
 import { Sparkles, Loader2 } from "lucide-react";
 import FormSection from "@/components/common/FormSection";
 import { Textarea } from "@/components/ui/textarea";
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 import useAI from "@/hooks/useAI";
 import { generateSummary } from "@/services/aiService";
 

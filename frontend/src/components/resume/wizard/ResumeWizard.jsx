@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 import steps from "./steps";
 import StepIndicator from "./StepIndicator";
 import NavigationButtons from "./NavigationButtons";

@@ -11,7 +11,7 @@ import RemoveItemButton from "@/components/common/RemoveItemButton";
 import InputField from "@/components/common/InputField";
 import TextareaField from "@/components/common/TextareaField";
 
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 function ProjectCard({
   project,

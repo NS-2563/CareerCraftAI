@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useResumeContext } from "@/context/useResumeContext";
-import { updateResume } from "@/services/resumeApi";
-import { mapResumePayloadForFinishBackend } from "@/utils/resumeFinishDataCompat";
+import { useResumeContext } from "@/resume/context/useResumeContext";
+import { updateResume } from "@/resume/services/resumeApi";
+import { mapResumePayloadForFinishBackend } from "@/resume/utils/resumeFinishDataCompat";
 
 export default function FinishResumeButton({ disabled }) {
   const { resumeId, resumeData } = useResumeContext();

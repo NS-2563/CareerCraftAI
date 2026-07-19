@@ -1,6 +1,9 @@
 import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/lib/api";
-import { mapResumeFromBackend } from "@/utils/resumeDataCompat";
+import {
+  mapResumeFromBackend,
+  mapResumePayloadForBackend,
+} from "@/resume/utils/resumeDataCompat";
 
 import { ResumeContext } from "./ResumeContext.store";
 

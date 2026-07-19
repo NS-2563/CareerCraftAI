@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import resumeApi from "@/services/resumeApi";
+import resumeApi from "@/resume/services/resumeApi";
 
 export function useResumes(
   searchQuery = "",

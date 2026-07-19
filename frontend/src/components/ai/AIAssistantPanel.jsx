@@ -10,7 +10,7 @@ import {
   TrendingUp,
   RefreshCw,
 } from "lucide-react";
-import useResume from "@/hooks/useResume";
+import useResume from "@/resume/hooks/useResume";
 import useAI from "@/hooks/useAI";
 import { analyzeResume } from "@/services/aiService";
 import AISuggestionCard from "./AISuggestionCard";

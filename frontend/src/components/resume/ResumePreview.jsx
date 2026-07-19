@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { templates } from "./templates";
-import { useResumeContext } from "@/context/useResumeContext";
+import { useResumeContext } from "@/resume/context/useResumeContext";
 
 const ResumePreview = forwardRef(function ResumePreview(_, ref) {
   const { resumeData, selectedTemplate } = useResumeContext();
