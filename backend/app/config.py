@@ -2,6 +2,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
+DEFAULT_INSECURE_KEYS = {
+    "your-secret-key-change-in-production",
+    "change-this-to-a-random-secret-key",
+    "secret",
+    "default",
+}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
@@ -32,3 +40,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Security check: refuse to run with a known insecure SECRET_KEY
+if settings.SECRET_KEY in DEFAULT_INSECURE_KEYS:
+    raise RuntimeError(
+        "SECURITY: SECRET_KEY is set to a known insecure default value. "
+        "Generate a strong random key and set it in your .env file.\n"
+        "  python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+    )

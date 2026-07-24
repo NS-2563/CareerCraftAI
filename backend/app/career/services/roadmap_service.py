@@ -351,10 +351,6 @@ Return only valid JSON.
             skill_gap.setdefault("priority", [])
 
             result["data"]["skill_gap"] = skill_gap
-
-            print("\n===== FINAL RESPONSE =====")
-            print(result["data"]["skill_gap"])
-            print("==========================\n")
             return result
 
         logger.warning(

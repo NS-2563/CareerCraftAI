@@ -71,12 +71,7 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    print("=" * 60)
-    print("TOKEN:", token)
     payload = decode_token(token)
-    print("PAYLOAD:", payload)
-    print("=" * 60)
-    
     if payload is None:
         raise credentials_exception
 

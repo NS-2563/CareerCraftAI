@@ -15,7 +15,6 @@ def _parse_json(value, default):
 
 
 def serialize_resume(resume):
-    print(">>> serialize_resume() called")
     return {
         "id": resume.id,
         "user_id": resume.user_id,
