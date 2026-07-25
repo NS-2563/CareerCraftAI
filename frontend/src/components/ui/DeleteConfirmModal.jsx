@@ -6,6 +6,7 @@ export default function DeleteConfirmModal({
   description = "Are you sure you want to delete this item? This action cannot be undone.",
   onCancel,
   onConfirm,
+  confirmDisabled = false,
 }) {
   return (
     <AnimatePresence>
@@ -44,7 +45,8 @@ export default function DeleteConfirmModal({
 
                 <button
                   onClick={onConfirm}
-                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                  disabled={confirmDisabled}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Delete
                 </button>

@@ -220,6 +220,21 @@ export async function restoreVersion(id, version) {
 }
 
 /* ============================================================
+   IMPORT
+============================================================ */
+
+export async function importResume(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await apiClient.post(`${API_BASE}/import`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  return data;
+}
+
+/* ============================================================
    CANONICAL SERVICE
 ============================================================ */
 
@@ -235,6 +250,7 @@ export const resumeApi = {
   restoreResume,
   getVersions,
   restoreVersion,
+  importResume,
 };
 
 export default resumeApi;

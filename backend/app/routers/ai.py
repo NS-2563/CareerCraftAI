@@ -17,6 +17,7 @@ from app.schemas.ai import (
     AnalyzeResumeResponse,
 )
 from app.services.ai_service import AIService
+from app.utils.sanitizer import sanitize_ai_output, sanitize_ai_output_list
 
 router = APIRouter(prefix="/api/ai", tags=["AI"])
 
@@ -29,7 +30,7 @@ def generate_summary(
     """Generate a professional summary from personal info."""
     personal = request.model_dump()
     summary = AIService.generate_summary(personal)
-    return GenerateSummaryResponse(summary=summary)
+    return GenerateSummaryResponse(summary=sanitize_ai_output(summary))
 
 
 @router.post("/improve-summary", response_model=ImproveSummaryResponse)
@@ -39,7 +40,7 @@ def improve_summary(
 ):
     """Improve an existing summary."""
     improved = AIService.improve_summary(request.text)
-    return ImproveSummaryResponse(improved_text=improved)
+    return ImproveSummaryResponse(improved_text=sanitize_ai_output(improved))
 
 
 @router.post("/improve-experience", response_model=ImproveExperienceResponse)
@@ -53,7 +54,7 @@ def improve_experience(
         request.position,
         request.company,
     )
-    return ImproveExperienceResponse(improved_text=improved)
+    return ImproveExperienceResponse(improved_text=sanitize_ai_output(improved))
 
 
 @router.post("/improve-project", response_model=ImproveProjectResponse)
@@ -63,7 +64,7 @@ def improve_project(
 ):
     """Improve project description."""
     improved = AIService.improve_project(request.text, request.name)
-    return ImproveProjectResponse(improved_text=improved)
+    return ImproveProjectResponse(improved_text=sanitize_ai_output(improved))
 
 
 @router.post("/suggest-skills", response_model=SuggestSkillsResponse)
@@ -78,7 +79,7 @@ def suggest_skills(
         request.job_description,
     )
     return SuggestSkillsResponse(
-        skills=result["skills"],
+        skills=sanitize_ai_output_list(result["skills"]),
         categories=result.get("categories"),
     )
 
@@ -90,4 +91,7 @@ def analyze_resume(
 ):
     """Analyze a resume and provide feedback."""
     result = AIService.analyze_resume(request.resume)
+    result["suggestions"] = sanitize_ai_output_list(result.get("suggestions", []))
+    result["strengths"] = sanitize_ai_output_list(result.get("strengths", []))
+    result["weaknesses"] = sanitize_ai_output_list(result.get("weaknesses", []))
     return AnalyzeResumeResponse(**result)

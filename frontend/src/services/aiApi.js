@@ -29,7 +29,7 @@ export async function generateSummary(personal, signal) {
       throw error;
     }
     console.error("generateSummary API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -53,7 +53,7 @@ export async function improveSummary(currentSummary, signal) {
       throw error;
     }
     console.error("improveSummary API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -76,7 +76,7 @@ export async function improveExperience(experience, signal) {
       throw error;
     }
     console.error("improveExperience API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -99,7 +99,7 @@ export async function improveProject(project, signal) {
       throw error;
     }
     console.error("improveProject API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -122,7 +122,7 @@ export async function suggestSkills(currentSkills, signal) {
       throw error;
     }
     console.error("suggestSkills API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -153,7 +153,7 @@ export async function analyzeResume(resumeData, signal) {
       throw error;
     }
     console.error("analyzeResume API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 

@@ -4,6 +4,7 @@ from typing import Optional, List
 import json
 
 from app.models.cover_letter import CoverLetter
+from app.models.resume import Resume
 from app.schemas.cover_letter import CoverLetterCreate, CoverLetterUpdate
 from app.utils.exceptions import NotFoundException
 
@@ -52,6 +53,13 @@ class CoverLetterService:
     @staticmethod
     def create(db: Session, user_id: int, cover_letter_data: CoverLetterCreate) -> CoverLetter:
         """Create a new cover letter."""
+        if cover_letter_data.resume_id is not None:
+            resume = db.query(Resume).filter(
+                Resume.id == cover_letter_data.resume_id,
+                Resume.user_id == user_id,
+            ).first()
+            if not resume:
+                raise NotFoundException("Resume", str(cover_letter_data.resume_id))
         cover_letter = CoverLetter(
             user_id=user_id,
             resume_id=cover_letter_data.resume_id,

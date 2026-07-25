@@ -5,11 +5,11 @@ from typing import Optional, List, Any
 # Base request schemas
 class GenerateSummaryRequest(BaseModel):
     """Request schema for generating a summary."""
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    location: Optional[str] = None
+    first_name: Optional[str] = Field(None, max_length=255)
+    last_name: Optional[str] = Field(None, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=50)
+    location: Optional[str] = Field(None, max_length=255)
     experience: Optional[List[dict]] = None
     education: Optional[List[dict]] = None
     skills: Optional[List[dict]] = None
@@ -18,7 +18,7 @@ class GenerateSummaryRequest(BaseModel):
 
 class ImproveTextRequest(BaseModel):
     """Base request schema for improving text."""
-    text: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1, max_length=10000)
 
 
 class ImproveSummaryRequest(ImproveTextRequest):
@@ -28,20 +28,20 @@ class ImproveSummaryRequest(ImproveTextRequest):
 
 class ImproveExperienceRequest(ImproveTextRequest):
     """Request schema for improving experience description."""
-    position: Optional[str] = None
-    company: Optional[str] = None
+    position: Optional[str] = Field(None, max_length=255)
+    company: Optional[str] = Field(None, max_length=255)
 
 
 class ImproveProjectRequest(ImproveTextRequest):
     """Request schema for improving project description."""
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=255)
 
 
 class SuggestSkillsRequest(BaseModel):
     """Request schema for suggesting skills."""
     current_skills: Optional[List[str]] = Field(default_factory=list)
-    job_title: Optional[str] = None
-    job_description: Optional[str] = None
+    job_title: Optional[str] = Field(None, max_length=255)
+    job_description: Optional[str] = Field(None, max_length=5000)
 
 
 class AnalyzeResumeRequest(BaseModel):

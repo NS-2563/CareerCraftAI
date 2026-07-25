@@ -122,17 +122,14 @@ export default function AppLayout({ children }) {
 
       {/* Top Navigation Bar - Mobile */}
       <header className="fixed top-0 left-0 right-0 h-14 bg-background border-b z-30 md:hidden">
-        <div className="flex items-center justify-between h-full px-4">
+        <div className="flex items-center h-full px-4">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 -ml-2 rounded-md hover:bg-accent"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-semibold">CareerCraftAI</span>
-          <button className="p-2 -mr-2 rounded-md hover:bg-accent">
-            <User className="w-5 h-5" />
-          </button>
+          <span className="flex-1 text-center font-semibold">CareerCraftAI</span>
         </div>
       </header>
 
@@ -157,6 +154,40 @@ export default function AppLayout({ children }) {
           collapsed={false}
           onItemClick={() => {}}
         />
+
+        {user && (
+          <div className="border-t mt-auto">
+            <div className="px-4 py-3 border-b">
+              <div className="text-sm font-medium truncate">{user?.name || user?.email || "User"}</div>
+              {user?.email && (
+                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+              )}
+            </div>
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 transition-colors ${
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`
+              }
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              <span>Settings</span>
+            </NavLink>
+            <button
+              onClick={() => {
+                handleLogout();
+                setMobileOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 text-left text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Sidebar - Desktop */}

@@ -3,11 +3,18 @@ from datetime import datetime
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.config import settings
 from app.database import init_db
+from app.middleware.security import SecurityHeadersMiddleware
+from app.middleware.body_size_limit import RequestBodySizeLimitMiddleware
 from app.utils.exceptions import register_exception_handlers
 from app.utils.response import success_response
+
+limiter = Limiter(key_func=get_remote_address)
 
 # Import routers
 from app.routers import auth, resume, ai, user
@@ -40,14 +47,30 @@ app = FastAPI(
 # Register exception handlers
 register_exception_handlers(app)
 
+# Request body size limit
+app.add_middleware(RequestBodySizeLimitMiddleware)
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
 )
+
+# Security headers
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
 app.include_router(auth.router)

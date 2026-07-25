@@ -72,8 +72,8 @@ export default function CoverLetterBuilder() {
   async function loadResumes() {
     try {
       const result = await listResumes(null, null);
-      if (result.success) {
-        setResumes(result.data || []);
+      if (Array.isArray(result)) {
+        setResumes(result);
       }
     } catch (err) {
       console.error("Failed to load resumes:", err);
@@ -358,7 +358,7 @@ const handleGenerate = async () => {
       )}
 
       {/* Cover Letter List Sidebar */}
-      <div className="grid lg:grid-cols-12 gap-6 p-6">
+      <div className="grid lg:grid-cols-12 gap-4 sm:gap-6 p-4 sm:p-6">
         <aside className="lg:col-span-2 rounded-xl border p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Cover Letters</h2>
@@ -371,11 +371,11 @@ const handleGenerate = async () => {
             </button>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2">
             {coverLetters.map((cl) => (
               <button
                 key={cl.id}
-                className={`w-full text-left p-3 rounded-lg border transition-all ${
+                className={`shrink-0 w-56 lg:w-full text-left p-3 rounded-lg border transition-all ${
                   selectedId === cl.id
                     ? "bg-primary/5 border-primary shadow-sm"
                     : "hover:border-primary/50"
@@ -396,7 +396,7 @@ const handleGenerate = async () => {
             ))}
 
             {coverLetters.length === 0 && (
-              <div className="text-sm text-muted-foreground p-4 text-center">
+              <div className="text-sm text-muted-foreground p-4 text-center w-full">
                 No cover letters yet.
                 <br />
                 Click + to create one.

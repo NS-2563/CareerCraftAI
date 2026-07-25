@@ -1,7 +1,7 @@
 import ResumeCard from "./ResumeCard";
 import { createResumeActions } from "./resumeActions";
 
-export default function ResumeGrid({ filteredResumes, formatDate, handlers }) {
+export default function ResumeGrid({ filteredResumes, formatDate, handlers, mutationStates = {} }) {
   const {
     handleDuplicate,
     openRenameModal,
@@ -12,23 +12,24 @@ export default function ResumeGrid({ filteredResumes, formatDate, handlers }) {
   } = handlers;
 
   const actions = createResumeActions({
-  handleDuplicate,
-  openRenameModal,
-  handleViewVersions,
-  handleArchive,
-  handleRestore,
-  handleDelete,
-});
+    handleDuplicate,
+    openRenameModal,
+    handleViewVersions,
+    handleArchive,
+    handleRestore,
+    handleDelete,
+  });
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {filteredResumes.map((resume) => (
         <ResumeCard
-  key={resume.id}
-  resume={resume}
-  formatDate={formatDate}
-  actions={actions}
-/>
+          key={resume.id}
+          resume={resume}
+          formatDate={formatDate}
+          actions={actions}
+          mutationStates={mutationStates}
+        />
       ))}
     </div>
   );

@@ -67,7 +67,12 @@ export const authService = {
   },
 
   // Logout
-  logout() {
+  async logout() {
+    try {
+      await apiClient.post("/api/auth/logout");
+    } catch {
+      // Ignore errors — still clear local state
+    }
     clearAuthToken();
     clearStoredAuth();
   },
@@ -80,8 +85,8 @@ export const authService = {
     }
 
     try {
-      const response = await apiClient.post("/api/auth/refresh", null, {
-        params: { refresh_token: stored.refresh_token },
+      const response = await apiClient.post("/api/auth/refresh", {
+        refresh_token: stored.refresh_token,
       });
 
       const { access_token, refresh_token, token_type } = response.data;
@@ -96,7 +101,7 @@ export const authService = {
 
       return response.data;
     } catch (error) {
-      this.logout();
+      await this.logout();
       throw error;
     }
   },

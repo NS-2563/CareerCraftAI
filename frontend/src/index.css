@@ -128,3 +128,10 @@
     @apply font-sans;
     }
 }
+
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-contacts-auto-fill-button,
+input[type="password"]::-ms-reveal {
+  display: none !important;
+  pointer-events: none;
+}

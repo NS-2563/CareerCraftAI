@@ -14,19 +14,19 @@ export default function ResumeBuilder() {
 
       <ResumeToolbar previewRef={previewRef} />
 
-      <div className="grid lg:grid-cols-12 gap-8 p-6">
+      <div className="grid lg:grid-cols-12 gap-4 sm:gap-8 p-4 sm:p-6">
 
         {/* Templates */}
-        <aside className="lg:col-span-2 rounded-xl border p-6">
+        <aside className="lg:col-span-2 rounded-xl border p-4 sm:p-6">
 
           <h2 className="text-lg font-semibold mb-4">
             Templates
           </h2>
 
-          <div className="grid gap-3">
+          <div className="flex lg:flex-col gap-3 overflow-x-auto pb-2">
             {/* Modern */}
             <button
-              className={`w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
+              className={`shrink-0 w-48 lg:w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
                 selectedTemplate === "modern"
                   ? "border-primary bg-primary/5 shadow-md"
                   : "border-border hover:border-primary/50"
@@ -39,7 +39,7 @@ export default function ResumeBuilder() {
 
             {/* Minimal */}
             <button
-              className={`w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
+              className={`shrink-0 w-48 lg:w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
                 selectedTemplate === "minimal"
                   ? "border-primary bg-primary/5 shadow-md"
                   : "border-border hover:border-primary/50"
@@ -52,7 +52,7 @@ export default function ResumeBuilder() {
 
             {/* Professional */}
             <button
-              className={`w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
+              className={`shrink-0 w-48 lg:w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
                 selectedTemplate === "professional"
                   ? "border-primary bg-primary/5 shadow-md"
                   : "border-border hover:border-primary/50"
@@ -65,7 +65,7 @@ export default function ResumeBuilder() {
 
             {/* Corporate */}
             <button
-              className={`w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
+              className={`shrink-0 w-48 lg:w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
                 selectedTemplate === "corporate"
                   ? "border-primary bg-primary/5 shadow-md"
                   : "border-border hover:border-primary/50"
@@ -78,7 +78,7 @@ export default function ResumeBuilder() {
 
             {/* Creative */}
             <button
-              className={`w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
+              className={`shrink-0 w-48 lg:w-full rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
                 selectedTemplate === "creative"
                   ? "border-primary bg-primary/5 shadow-md"
                   : "border-border hover:border-primary/50"

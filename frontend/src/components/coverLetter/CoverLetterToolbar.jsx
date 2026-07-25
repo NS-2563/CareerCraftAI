@@ -56,19 +56,19 @@ export default function CoverLetterToolbar({
 
   return (
     <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between px-6 py-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 sm:px-6 py-3">
         {/* Left: Title */}
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold truncate">
             {coverLetter?.title || "Untitled Cover Letter"}
           </h1>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground shrink-0">
             v{coverLetter?.version || 1}
           </span>
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Generate with AI */}
           <button
             className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
@@ -204,7 +204,7 @@ export default function CoverLetterToolbar({
       </div>
 
       {/* Template & Tone Selection */}
-      <div className="flex items-center gap-6 px-6 py-2 border-t">
+      <div className="flex flex-wrap items-center gap-4 sm:gap-6 px-4 sm:px-6 py-2 border-t">
         {/* Template Selector */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Template:</span>

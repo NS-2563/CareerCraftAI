@@ -12,7 +12,7 @@ export async function createCoverLetter(coverLetterData, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("createCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -22,7 +22,7 @@ export async function getCoverLetter(coverLetterId, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("getCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -33,7 +33,7 @@ export async function listCoverLetters(resumeId = null, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("listCoverLetters API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -43,7 +43,7 @@ export async function updateCoverLetter(coverLetterId, coverLetterData, signal) 
     return { success: true, data: response.data };
   } catch (error) {
     console.error("updateCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -53,7 +53,7 @@ export async function deleteCoverLetter(coverLetterId, signal) {
     return { success: true, data: { message: "Cover letter deleted" } };
   } catch (error) {
     console.error("deleteCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -67,7 +67,7 @@ export async function duplicateCoverLetter(coverLetterId, newTitle, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("duplicateCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -81,7 +81,7 @@ export async function renameCoverLetter(coverLetterId, newTitle, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("renameCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -92,7 +92,7 @@ export async function getVersionHistory(coverLetterId, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("getVersionHistory API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -106,7 +106,7 @@ export async function restoreVersion(coverLetterId, version, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("restoreVersion API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -117,7 +117,7 @@ export async function archiveCoverLetter(coverLetterId, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("archiveCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -127,7 +127,7 @@ export async function restoreCoverLetter(coverLetterId, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("restoreCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -141,7 +141,7 @@ export async function searchCoverLetters(query, includeArchived = false, signal)
     return { success: true, data: response.data };
   } catch (error) {
     console.error("searchCoverLetters API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -152,7 +152,7 @@ export async function generateCoverLetter(request, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("generateCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -166,7 +166,7 @@ export async function generateCoverLetterForExisting(coverLetterId, request, sig
     return { success: true, data: response.data };
   } catch (error) {
     console.error("generateCoverLetterForExisting API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -181,7 +181,7 @@ export async function editCoverLetter(coverLetterId, request, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("editCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 
@@ -195,7 +195,7 @@ export async function applyEditCoverLetter(coverLetterId, request, signal) {
     return { success: true, data: response.data };
   } catch (error) {
     console.error("applyEditCoverLetter API error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.response?.data?.detail || error.message };
   }
 }
 

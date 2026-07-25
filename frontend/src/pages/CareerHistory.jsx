@@ -78,7 +78,7 @@ console.log("Filtered:", filteredReports);
           placeholder="Search reports..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border rounded-lg px-4 py-2 w-80"
+          className="border rounded-lg px-4 py-2 w-full sm:w-80"
         />
 
         <div className="font-medium">

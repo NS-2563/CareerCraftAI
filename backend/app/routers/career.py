@@ -5,6 +5,7 @@ from app.database import get_db
 from app.dependencies import get_current_active_user
 
 from app.models.user import User
+from app.schemas.career import CareerCoachRequest
 
 from app.career.services.roadmap_service import (
     generate_career_report,
@@ -19,7 +20,7 @@ router = APIRouter()
 
 @router.post("/career-coach")
 def coach(
-    data: dict,
+    data: CareerCoachRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -28,7 +29,7 @@ def coach(
     save it into the user's history.
     """
 
-    result = generate_career_report(data)
+    result = generate_career_report(data.model_dump())
 
     if not result.get("success"):
         raise HTTPException(

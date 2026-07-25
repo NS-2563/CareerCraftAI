@@ -67,6 +67,16 @@ class ConflictException(AppException):
         )
 
 
+class TooManyRequestsException(AppException):
+    """Exception for rate limiting or account lockout."""
+
+    def __init__(self, message: str = "Too many requests"):
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            message=message,
+        )
+
+
 class InternalServerException(AppException):
     """Exception for internal server errors."""
 

@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import os
+import logging
 
 from app.database import get_db
 from app.dependencies import get_current_active_user
@@ -15,8 +17,12 @@ from app.schemas.resume import (
 )
 from app.services.resume_service import ResumeService
 from app.utils.response import success_response, paginated_response
-from app.utils.exceptions import NotFoundException
+from app.utils.exceptions import NotFoundException, ValidationException
 from app.utils.resume_serializer import serialize_resume
+from app.utils.upload import save_upload, MAX_UPLOAD_SIZE
+from app.resume.services.pdf_parser import extract_text_from_pdf
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
@@ -66,9 +72,6 @@ def list_resumes(
         archived,
     )
     return resumes
-    """List all resumes for the current user."""
-    resumes = ResumeService.get_all(db, current_user.id, skip, limit)
-    return resumes
 
 
 @router.post("", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
@@ -79,6 +82,46 @@ def create_resume(
 ):
     """Create a new resume."""
     resume = ResumeService.create(db, current_user.id, resume_data)
+    return serialize_resume(resume)
+
+
+@router.post("/import", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
+async def import_resume(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Import a PDF resume. Parses the text and creates a resume record."""
+    content = await file.read()
+
+    try:
+        file_path = save_upload(content, file.filename or "resume.pdf")
+    except ValueError as e:
+        raise ValidationException(str(e))
+
+    try:
+        extracted_text = extract_text_from_pdf(file_path)
+    except Exception as e:
+        logger.error("PDF parsing failed for file %s: %s", file.filename, str(e))
+        raise ValidationException("Could not parse the PDF file. Ensure it is a valid PDF.")
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    max_summary_len = 50000
+    summary_text = extracted_text[:max_summary_len] if extracted_text else ""
+
+    filename_stem = os.path.splitext(file.filename or "resume.pdf")[0]
+    resume_name = f"Imported - {filename_stem}"
+
+    from app.schemas.resume import ResumeCreate as ImportResumeCreate
+    resume_data = ImportResumeCreate(
+        name=resume_name[:255],
+        summary=summary_text,
+    )
+
+    resume = ResumeService.create(db, current_user.id, resume_data)
+    logger.info("IMPORT resume_id=%s user_id=%s filename=%s", resume.id, current_user.id, file.filename)
     return serialize_resume(resume)
 
 

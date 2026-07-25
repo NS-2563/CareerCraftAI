@@ -28,14 +28,14 @@ export function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setLocalError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters");
       return;
     }
 
     try {
       await register(email, username, password);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setLocalError(err.message);
     }
@@ -90,7 +90,7 @@ export function RegisterPage() {
                 type="password"
                 value={password}
                 onChange={setPassword}
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 required
               />
 

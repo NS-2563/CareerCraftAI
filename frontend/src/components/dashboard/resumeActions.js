@@ -3,40 +3,48 @@ export const createResumeActions = (actions) => {
     {
       label: "Edit",
       type: "link",
+      group: "primary",
       variant: "ghost",
       href: (id) => `/resume-studio?id=${id}`,
     },
     {
       label: "Duplicate",
+      group: "menu",
       action: actions.handleDuplicate,
-      variant: "ghost",
     },
     {
       label: "Rename",
+      group: "menu",
       action: actions.openRenameModal,
-      variant: "ghost",
+    },
+    {
+      label: "Export",
+      type: "link",
+      group: "menu",
+      href: (id) => `/resume-studio?id=${id}`,
     },
     {
       label: "History",
+      group: "menu",
       action: actions.handleViewVersions,
-      variant: "ghost",
     },
     {
       label: "Archive",
+      group: "menu",
       action: actions.handleArchive,
       condition: (r) => r.is_archived === false,
-      variant: "outline",
     },
     {
       label: "Restore",
+      group: "menu",
       action: actions.handleRestore,
       condition: (r) => r.is_archived === true,
-      variant: "outline",
     },
     {
       label: "Delete",
+      group: "menu",
       action: actions.handleDelete,
-      variant: "destructive",
+      destructive: true,
     },
   ];
 };

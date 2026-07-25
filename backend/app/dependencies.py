@@ -1,3 +1,4 @@
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 import hashlib
@@ -14,25 +15,43 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/auth/token"
 )
 
-# Simple hash using SHA256 (use bcrypt in production)
-SALT = "careercraft_salt_2024"
+_BCRYPT_VERSION = "$2b$"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hashed password."""
-    hash_obj = hashlib.sha256()
-    hash_obj.update((plain_password + SALT).encode())
-    return hash_obj.hexdigest() == hashed_password
+    """Verify a plain password against a hashed password.
+
+    Supports both bcrypt (current) and legacy SHA256+static-salt hashes
+    so that existing users can still log in during the migration period.
+    """
+    if is_legacy_hash(hashed_password):
+        hash_obj = hashlib.sha256()
+        hash_obj.update((plain_password.encode() + b"careercraft_salt_2024"))
+        return hash_obj.hexdigest() == hashed_password
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password using SHA256."""
-    hash_obj = hashlib.sha256()
-    hash_obj.update((password + SALT).encode())
-    return hash_obj.hexdigest()
+    """Hash a password using bcrypt."""
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def is_legacy_hash(hashed_password: str) -> bool:
+    """Check if a password hash uses the legacy SHA256 format."""
+    return not hashed_password.startswith(_BCRYPT_VERSION)
+
+
+def create_access_token(
+    data: dict,
+    expires_delta: Optional[timedelta] = None,
+    token_version: int = 0,
+) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     expire = datetime.utcnow() + (
@@ -40,15 +59,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         if expires_delta
         else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": "access", "ver": token_version})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: dict, token_version: int = 0) -> str:
     """Create a JWT refresh token."""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "type": "refresh", "ver": token_version})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -70,6 +89,11 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    token_revoked_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token has been revoked",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
     payload = decode_token(token)
     if payload is None:
@@ -82,6 +106,10 @@ def get_current_user(
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
         raise credentials_exception
+
+    token_ver = payload.get("ver", 0)
+    if token_ver != user.token_version:
+        raise token_revoked_exception
 
     return user
 

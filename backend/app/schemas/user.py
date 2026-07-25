@@ -5,19 +5,19 @@ from typing import Optional
 
 # User schemas
 class UserBase(BaseModel):
-    email: str
+    email: str = Field(..., max_length=255)
     username: str = Field(..., min_length=3, max_length=100)
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = None
+    email: Optional[str] = Field(None, max_length=255)
     username: Optional[str] = Field(None, min_length=3, max_length=100)
-    full_name: Optional[str] = None
-    profile_picture: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=255)
+    profile_picture: Optional[str] = Field(None, max_length=2048)
 
 
 class UserResponse(UserBase):
@@ -50,12 +50,20 @@ class TokenData(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., max_length=128)
 
 
 class RegisterRequest(UserCreate):
     pass
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutResponse(BaseModel):
+    message: str = "Logged out successfully"
 
 
 # Google OAuth (placeholder)

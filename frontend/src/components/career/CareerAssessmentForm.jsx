@@ -66,12 +66,12 @@ export default function CareerAssessmentForm({ onSubmit, loading = false }) {
 
         {/* LEFT PANEL */}
 
-        <div className="border-r p-10 flex flex-col">
+        <div className="border-r p-6 sm:p-10 flex flex-col">
 
           <div className="flex items-start justify-between">
 
             <div>
-              <h2 className="text-content-primary font-serif text-[40px] leading-[100%] font-extralight tracking-[-1.2px]">
+              <h2 className="text-content-primary font-serif text-2xl sm:text-[40px] leading-[100%] font-extralight tracking-[-1.2px]">
                 AI Career Assessment
               </h2>
 
@@ -130,7 +130,7 @@ export default function CareerAssessmentForm({ onSubmit, loading = false }) {
 
         {/* RIGHT PANEL */}
 
-        <div className="p-10">
+        <div className="p-6 sm:p-10">
 
           <form onSubmit={submit} className="space-y-6">
 

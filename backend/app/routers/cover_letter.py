@@ -146,6 +146,34 @@ def create_cover_letter(
     return cover_letter
 
 
+@router.get("/archived/list", response_model=List[CoverLetterResponse])
+def list_archived_cover_letters(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """List all archived cover letters for the current user."""
+    cover_letters = CoverLetterService.get_archived(db, current_user.id, skip, limit)
+    return cover_letters
+
+
+@router.get("/search", response_model=List[CoverLetterResponse])
+def search_cover_letters(
+    q: Optional[str] = Query(None, min_length=1),
+    sort: str = Query("updated_at", pattern="^(updated_at|created_at|title)$"),
+    include_archived: bool = False,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Search cover letters by query string."""
+    if q:
+        cover_letters = CoverLetterService.search(db, current_user.id, q, include_archived)
+    else:
+        cover_letters = CoverLetterService.get_all_sorted(db, current_user.id, sort, include_archived)
+    return cover_letters
+
+
 @router.get("/{cover_letter_id}", response_model=CoverLetterResponse)
 def get_cover_letter(
     cover_letter_id: int,
@@ -253,34 +281,6 @@ def restore_cover_letter(
     """Restore an archived cover letter."""
     cover_letter = CoverLetterService.restore(db, cover_letter_id, current_user.id)
     return cover_letter
-
-
-@router.get("/archived/list", response_model=List[CoverLetterResponse])
-def list_archived_cover_letters(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """List all archived cover letters for the current user."""
-    cover_letters = CoverLetterService.get_archived(db, current_user.id, skip, limit)
-    return cover_letters
-
-
-@router.get("/search", response_model=List[CoverLetterResponse])
-def search_cover_letters(
-    q: Optional[str] = Query(None, min_length=1),
-    sort: str = Query("updated_at", pattern="^(updated_at|created_at|title)$"),
-    include_archived: bool = False,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Search cover letters by query string."""
-    if q:
-        cover_letters = CoverLetterService.search(db, current_user.id, q, include_archived)
-    else:
-        cover_letters = CoverLetterService.get_all_sorted(db, current_user.id, sort, include_archived)
-    return cover_letters
 
 
 @router.post("/{cover_letter_id}/versions/{version}/restore", response_model=CoverLetterResponse)
