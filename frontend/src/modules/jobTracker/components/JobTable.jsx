@@ -6,6 +6,8 @@ export default function JobTable({
   onView = () => {},
   onEdit = () => {},
   onDelete = () => {},
+  onDraftMessage = () => {},
+  suggestionJobIds = new Set(),
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border">
@@ -42,6 +44,8 @@ export default function JobTable({
               onView={() => onView(job)}
               onEdit={() => onEdit(job)}
               onDelete={() => onDelete(job)}
+              onDraftMessage={() => onDraftMessage(job)}
+              hasSuggestion={suggestionJobIds.has(job.id)}
             />
           ))}
         </tbody>
@@ -49,4 +53,3 @@ export default function JobTable({
     </div>
   );
 }
-

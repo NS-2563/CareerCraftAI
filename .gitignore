@@ -14,3 +14,9 @@ __pycache__/
 
 # Node dependencies
 node_modules/
+
+# Uploaded files (runtime only)
+backend/uploads/
+
+# SQLite database (runtime only)
+backend/careercraft.db

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import ResumeBuilder from "@/components/resume/ResumeBuilder";
@@ -11,9 +11,16 @@ export default function ResumeStudio() {
     startNewResume,
   } = useResumeContext();
 
+  const [initialSection, setInitialSection] = useState(null);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const id = params.get("id");
+    const section = params.get("section");
+
+    if (section) {
+      setInitialSection(section);
+    }
 
     // Explicit new-resume flow:
     // - if ?id is missing AND we don't already have a resumeId => create
@@ -28,7 +35,7 @@ export default function ResumeStudio() {
 
   }, [location.search, resumeId, startNewResume]);
 
-  return <ResumeBuilder />;
+  return <ResumeBuilder initialSection={initialSection} />;
 }
 
 

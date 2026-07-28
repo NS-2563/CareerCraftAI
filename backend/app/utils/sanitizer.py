@@ -2,10 +2,10 @@ import re
 
 
 BLOCKED_PATTERNS = [
-    re.compile(r"<script[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL),
-    re.compile(r"<iframe[^>]*>.*?</iframe>", re.IGNORECASE | re.DOTALL),
-    re.compile(r"<object[^>]*>.*?</object>", re.IGNORECASE | re.DOTALL),
-    re.compile(r"<embed[^>]*>.*?</embed>", re.IGNORECASE | re.DOTALL),
+    re.compile(r"</?script[^>]*/?>", re.IGNORECASE),
+    re.compile(r"</?iframe[^>]*/?>", re.IGNORECASE),
+    re.compile(r"</?object[^>]*/?>", re.IGNORECASE),
+    re.compile(r"<embed[^>]*/?>", re.IGNORECASE),
     re.compile(r"on\w+\s*=", re.IGNORECASE),
     re.compile(r"javascript\s*:", re.IGNORECASE),
     re.compile(r"data\s*:\s*text/html", re.IGNORECASE),

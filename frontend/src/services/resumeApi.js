@@ -234,6 +234,17 @@ export async function importResume(file) {
   return data;
 }
 
+export async function parseImport(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await apiClient.post(`${API_BASE}/import/parse`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  return data;
+}
+
 /* ============================================================
    CANONICAL SERVICE
 ============================================================ */
@@ -251,6 +262,7 @@ export const resumeApi = {
   getVersions,
   restoreVersion,
   importResume,
+  parseImport,
 };
 
 export default resumeApi;

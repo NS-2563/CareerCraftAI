@@ -1,6 +1,7 @@
 import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/lib/api";
 import { mapResumeFromBackend } from "@/utils/resumeDataCompat";
+import { loadResume } from "@/services/resumeApi";
 
 import { ResumeContext } from "./ResumeContext.store";
 
@@ -370,6 +371,9 @@ export function ResumeProvider({ children }) {
     });
 
     const newResume = response.data;
+
+    loadedResumeIdRef.current = newResume.id;
+
     console.log("[ResumeContext] createResumeOnBackend newResume.id", {
       newResumeId: newResume?.id,
     });
@@ -566,6 +570,25 @@ export function ResumeProvider({ children }) {
   }
 
 
+
+  const loadedResumeIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!resumeId || loadedResumeIdRef.current === resumeId) return;
+
+    loadedResumeIdRef.current = resumeId;
+
+    loadResume(resumeId)
+      .then((res) => {
+        const mapped = mapResumeFromBackend(res);
+        if (mapped) {
+          setResumeData(ensureAllRepeatableSectionsInitialized(mapped));
+        }
+      })
+      .catch(() => {
+        loadedResumeIdRef.current = null;
+      });
+  }, [resumeId]);
 
   const value = useMemo(
     () => ({

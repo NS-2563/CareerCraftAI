@@ -35,8 +35,10 @@ class EducationItem(BaseModel):
     institution: Optional[str] = None
     degree: Optional[str] = None
     field_of_study: Optional[str] = None
+    location: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    current: Optional[bool] = False
     gpa: Optional[str] = None
     description: Optional[str] = None
 
@@ -47,6 +49,7 @@ class ProjectItem(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     url: Optional[str] = None
+    live_url: Optional[str] = None
     technologies: Optional[List[str]] = None
 
 

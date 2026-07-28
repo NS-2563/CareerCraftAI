@@ -3,11 +3,14 @@ import { toast } from "sonner";
 import resumeApi from "@/services/resumeApi";
 
 function extractMessage(err) {
-  const detail = err?.response?.data?.detail;
+  const data = err?.response?.data;
+  if (!data) return null;
+  const detail = data.detail;
   if (detail) {
     if (typeof detail === "object" && detail.message) return detail.message;
     if (typeof detail === "string") return detail;
   }
+  if (typeof data.message === "string") return data.message;
   return null;
 }
 

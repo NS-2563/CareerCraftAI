@@ -38,6 +38,9 @@ class User(Base):
     cover_letters = relationship("CoverLetter", back_populates="user", cascade="all, delete-orphan")
     career_reports = relationship("CareerReport", back_populates="user", cascade="all, delete-orphan")
     job_applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
+    resume_analyses = relationship("ResumeAnalysis", back_populates="user", cascade="all, delete-orphan")
+    communication_messages = relationship("CommunicationMessage", back_populates="user", cascade="all, delete-orphan")
+    communication_suggestions = relationship("CommunicationSuggestion", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("email", name="uix_email"),

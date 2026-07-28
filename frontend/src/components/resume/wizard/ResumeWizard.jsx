@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useResumeContext } from "@/context/useResumeContext";
@@ -117,11 +117,22 @@ for (const edu of education) {
   return { valid: true, message: "" };
 }
 
-export default function ResumeWizard() {
+export default function ResumeWizard({ initialSection }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [validationError, setValidationError] = useState("");
+  const [initialSectionSet, setInitialSectionSet] = useState(false);
   const { resumeData } = useResumeContext();
   const totalSteps = steps.length;
+
+  useEffect(() => {
+    if (initialSection && !initialSectionSet) {
+      const idx = steps.findIndex((s) => s.id === initialSection);
+      if (idx >= 0 && idx !== currentStep) {
+        setCurrentStep(idx);
+      }
+      setInitialSectionSet(true);
+    }
+  }, [initialSection, initialSectionSet, currentStep]);
 
   function handlePrevious() {
     setCurrentStep((s) => Math.max(0, s - 1));

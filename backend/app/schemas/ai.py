@@ -83,8 +83,9 @@ class SuggestSkillsResponse(BaseModel):
 
 class AnalyzeResumeResponse(BaseModel):
     """Response schema for analyzing a resume."""
-    resume_score: int = Field(..., ge=0, le=100)
-    ats_score: int = Field(..., ge=0, le=100)
+    resume_score: Optional[int] = Field(None, ge=0, le=100)
+    ats_score: Optional[int] = Field(None, ge=0, le=100)
+    analysis_failed: bool = False
     suggestions: List[str] = Field(default_factory=list)
     strengths: List[str] = Field(default_factory=list)
     weaknesses: List[str] = Field(default_factory=list)

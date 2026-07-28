@@ -22,10 +22,25 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # Rate limiting
+    # Rate limiting — unauthenticated endpoints (IP-based)
     RATE_LIMIT_LOGIN: str = "10/minute"
     RATE_LIMIT_REGISTER: str = "5/minute"
     RATE_LIMIT_REFRESH: str = "10/minute"
+
+    # Rate limiting — AI endpoints (per-user burst + daily quota)
+    # Relatively high defaults for tests; production should tighten via .env
+    RATE_LIMIT_ANALYSIS: str = "60/minute"
+    RATE_LIMIT_ANALYSIS_DAILY: str = "200/day"
+    RATE_LIMIT_JD_MATCH: str = "60/minute"
+    RATE_LIMIT_JD_MATCH_DAILY: str = "200/day"
+    RATE_LIMIT_AI: str = "60/minute"
+    RATE_LIMIT_AI_DAILY: str = "200/day"
+    RATE_LIMIT_COVER_LETTER: str = "30/minute"
+    RATE_LIMIT_COVER_LETTER_DAILY: str = "100/day"
+    RATE_LIMIT_COMMUNICATION: str = "30/minute"
+    RATE_LIMIT_COMMUNICATION_DAILY: str = "100/day"
+    RATE_LIMIT_CAREER_COACH: str = "20/minute"
+    RATE_LIMIT_CAREER_COACH_DAILY: str = "50/day"
 
     # Account lockout
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
@@ -42,6 +57,9 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "gemini"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
+
+    # Suggestions
+    SUGGESTION_FOLLOW_UP_DAYS: int = 7
 
     @property
     def cors_origins_list(self) -> List[str]:

@@ -21,6 +21,7 @@ from app.utils.exceptions import NotFoundException, ValidationException
 from app.utils.resume_serializer import serialize_resume
 from app.utils.upload import save_upload, MAX_UPLOAD_SIZE
 from app.resume.services.pdf_parser import extract_text_from_pdf
+from app.resume.services.resume_pipeline import parse_resume_full
 
 logger = logging.getLogger(__name__)
 
@@ -108,20 +109,32 @@ async def import_resume(
         if os.path.exists(file_path):
             os.remove(file_path)
 
-    max_summary_len = 50000
-    summary_text = extracted_text[:max_summary_len] if extracted_text else ""
-
     filename_stem = os.path.splitext(file.filename or "resume.pdf")[0]
     resume_name = f"Imported - {filename_stem}"
 
-    from app.schemas.resume import ResumeCreate as ImportResumeCreate
-    resume_data = ImportResumeCreate(
-        name=resume_name[:255],
-        summary=summary_text,
+    # Phase 2B→2C→2D pipeline: section detection → deterministic → AI enrichment
+    pipeline_result = parse_resume_full(
+        raw_text=extracted_text or "",
+        resume_name=resume_name,
+        use_ai=True,
     )
 
+    resume_data = pipeline_result["resume_create"]
     resume = ResumeService.create(db, current_user.id, resume_data)
-    logger.info("IMPORT resume_id=%s user_id=%s filename=%s", resume.id, current_user.id, file.filename)
+
+    ai_used = pipeline_result.get("ai_used", False)
+    source_meta = pipeline_result.get("source_meta", {})
+    sections_ai_success = sum(
+        1 for v in source_meta.values() if isinstance(v, dict) and v.get("ai_success")
+    )
+    sections_total = len(source_meta)
+
+    logger.info(
+        "IMPORT resume_id=%s user_id=%s filename=%s ai=%s sections=%d/%d",
+        resume.id, current_user.id, file.filename,
+        ai_used, sections_ai_success, sections_total,
+    )
+
     return serialize_resume(resume)
 
 

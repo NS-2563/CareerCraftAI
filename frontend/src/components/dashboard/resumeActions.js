@@ -8,6 +8,12 @@ export const createResumeActions = (actions) => {
       href: (id) => `/resume-studio?id=${id}`,
     },
     {
+      label: "Analyze",
+      type: "link",
+      group: "menu",
+      href: (id) => `/resume?id=${id}`,
+    },
+    {
       label: "Duplicate",
       group: "menu",
       action: actions.handleDuplicate,

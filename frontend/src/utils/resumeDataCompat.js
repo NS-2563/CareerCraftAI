@@ -82,7 +82,7 @@ function mapProjectsFromBackend(projects) {
       title: safeString(x.name),
       techStack: Array.isArray(x.technologies) ? x.technologies.join(", ") : safeString(x.technologies),
       github: safeString(x.url),
-      liveDemo: "",
+      liveDemo: safeString(x.live_url),
       description: safeString(x.description),
     };
   });
@@ -221,6 +221,7 @@ function toProjectsForBackend(projects) {
     name: p?.title,
     description: p?.description,
     url: p?.github,
+    live_url: p?.liveDemo || undefined,
     technologies: typeof p?.techStack === "string"
       ? p.techStack.split(",").map((t) => t.trim()).filter(Boolean)
       : Array.isArray(p?.techStack)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -10,7 +10,6 @@ from app.models.user import User
 from app.schemas.user import (
     LoginRequest,
     RegisterRequest,
-    RefreshRequest,
     Token,
     LogoutResponse,
     UserResponse,
@@ -24,6 +23,43 @@ from app.utils.exceptions import AppException
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
+def _is_dev() -> bool:
+    """Heuristic: localhost origins imply a development environment."""
+    return "localhost" in settings.CORS_ORIGINS
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    """Set the refresh token as an httpOnly cookie.
+
+    Secure flag is omitted in local dev (HTTP); applied in production (HTTPS).
+    SameSite=Lax allows the cookie to be sent on navigations from the same
+    registrable domain; the frontend and backend share localhost so this is
+    same-site despite different ports.
+    """
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=not _is_dev(),
+        samesite="lax",
+        path="/api/auth/refresh",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    """Expire the refresh-token cookie immediately."""
+    response.set_cookie(
+        key="refresh_token",
+        value="",
+        httponly=True,
+        secure=not _is_dev(),
+        samesite="lax",
+        path="/api/auth/refresh",
+        max_age=0,
+    )
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.RATE_LIMIT_REGISTER)
 def register(request: Request, user_data: RegisterRequest, db: Session = Depends(get_db)):
@@ -34,21 +70,33 @@ def register(request: Request, user_data: RegisterRequest, db: Session = Depends
 
 @router.post("/login", response_model=Token)
 @limiter.limit(settings.RATE_LIMIT_LOGIN)
-def login(request: Request, credentials: LoginRequest, db: Session = Depends(get_db)):
-    """Login with email and password."""
+def login(
+    request: Request,
+    credentials: LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Login with email and password.
+
+    The refresh token is returned as an httpOnly cookie instead of in the
+    JSON body.  Only the short-lived access token appears in the response.
+    """
     user, token = AuthService.login(db, credentials.email, credentials.password)
-    return token
+    _set_refresh_cookie(response, token.refresh_token)
+    return Token(access_token=token.access_token, token_type=token.token_type)
+
 
 @router.post("/token", response_model=Token)
 @limiter.limit(settings.RATE_LIMIT_LOGIN)
 def oauth2_login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
     """
     OAuth2 Password Flow endpoint.
-    Used by Swagger UI.
+    Used by Swagger UI — returns both tokens in JSON for compatibility.
     """
 
     user, token = AuthService.login(
@@ -57,6 +105,9 @@ def oauth2_login(
         password=form_data.password,
     )
 
+    # Also set the cookie so the frontend can benefit from cookie auth
+    # even when using the Swagger login button.
+    _set_refresh_cookie(response, token.refresh_token)
     return token
 
 
@@ -64,25 +115,35 @@ def oauth2_login(
 @limiter.limit(settings.RATE_LIMIT_REFRESH)
 def refresh_token(
     request: Request,
-    body: RefreshRequest,
+    response: Response,
     db: Session = Depends(get_db),
 ):
-    """Refresh access token using refresh token.
+    """Refresh access token using the httpOnly cookie.
 
-    The refresh token must be sent in the POST request body.
-    On success, old refresh token is invalidated (rotation).
+    The refresh token is read from the ``refresh_token`` cookie rather than
+    from the request body.  A new rotated refresh token is set on the cookie
+    and the old one is invalidated server-side.
     """
-    token = AuthService.refresh_token(db, body.refresh_token)
-    return token
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value:
+        from app.utils.exceptions import UnauthorizedException
+        raise UnauthorizedException("No refresh token cookie present")
+
+    token = AuthService.refresh_token(db, refresh_token_value)
+    _set_refresh_cookie(response, token.refresh_token)
+    return Token(access_token=token.access_token, token_type=token.token_type)
 
 
 @router.post("/logout", response_model=LogoutResponse)
 def logout(
+    request: Request,
+    response: Response,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Logout user and invalidate all existing tokens server-side."""
+    """Logout user, invalidate tokens server-side, and clear the cookie."""
     AuthService.logout(current_user, db)
+    _clear_refresh_cookie(response)
     return LogoutResponse(message="Logged out successfully")
 
 

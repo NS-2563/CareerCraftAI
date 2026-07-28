@@ -5,6 +5,7 @@ import { normalizeError } from "@/utils/apiErrorHandler";
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: REQUEST_TIMEOUT,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -63,18 +64,15 @@ apiClient.interceptors.response.use(
     const normalized = normalizeError(error);
 
     if (normalized.retryable) {
-
       const config = error.config;
 
-
-      if (!config || !config._retry) {
+      if (config && !config._retry) {
         config._retry = true;
 
         let retries = 0;
         const maxRetries = RETRY_CONFIG.maxRetries;
 
         while (retries < maxRetries) {
-
           try {
             await new Promise((resolve) =>
               setTimeout(resolve, RETRY_CONFIG.retryDelay * (retries + 1))
@@ -86,8 +84,6 @@ apiClient.interceptors.response.use(
               throw retryError;
             }
           }
-
-
         }
       }
     }
@@ -98,4 +94,3 @@ apiClient.interceptors.response.use(
 
 export { apiClient, withRetry };
 export default apiClient;
-

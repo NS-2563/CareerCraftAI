@@ -1,14 +1,34 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, X, Loader2, AlertCircle } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Upload, FileText, X, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import ImportReviewStep from "@/components/dashboard/import-review/ImportReviewStep";
+
+const STEP_UPLOAD = "upload";
+const STEP_PARSING = "parsing";
+const STEP_REVIEW = "review";
 
 export default function ImportResumeModal({ open, onClose, onSuccess }) {
+  const [step, setStep] = useState(STEP_UPLOAD);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [parsedData, setParsedData] = useState(null);
+  const [sourceMeta, setSourceMeta] = useState(null);
+  const [resumeName, setResumeName] = useState("");
   const inputRef = useRef(null);
+
+  const resetState = useCallback(() => {
+    setStep(STEP_UPLOAD);
+    setFile(null);
+    setUploading(false);
+    setError(null);
+    setDragOver(false);
+    setParsedData(null);
+    setSourceMeta(null);
+    setResumeName("");
+  }, []);
 
   if (!open) return null;
 
@@ -52,7 +72,7 @@ export default function ImportResumeModal({ open, onClose, onSuccess }) {
 
   const handleDragLeave = () => setDragOver(false);
 
-  const handleUpload = async () => {
+  const handleParse = async () => {
     if (!file) return;
 
     setUploading(true);
@@ -62,13 +82,14 @@ export default function ImportResumeModal({ open, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const { data } = await apiClient.post("/api/resume/import", formData, {
+      const { data } = await apiClient.post("/api/resume/import/parse", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      onSuccess?.(data);
-      setFile(null);
-      onClose();
+      setParsedData(data.parsed_data || {});
+      setSourceMeta(data.source_meta || {});
+      setResumeName(data.resume_name || "Imported Resume");
+      setStep(STEP_REVIEW);
     } catch (err) {
       const detail = err?.response?.data?.detail;
       if (detail) {
@@ -89,16 +110,30 @@ export default function ImportResumeModal({ open, onClose, onSuccess }) {
 
   const handleClose = () => {
     if (uploading) return;
-    setFile(null);
-    setError(null);
+    resetState();
     onClose();
+  };
+
+  const handleReviewCancel = () => {
+    resetState();
+    onClose();
+  };
+
+  const handleReviewSuccess = () => {
+    resetState();
+    onClose();
+    onSuccess?.();
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Import Resume</h2>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 pb-0">
+          <h2 className="text-xl font-bold">
+            {step === STEP_UPLOAD && "Import Resume"}
+            {step === STEP_PARSING && "Import Resume"}
+            {step === STEP_REVIEW && "Import Review"}
+          </h2>
           <button
             onClick={handleClose}
             disabled={uploading}
@@ -108,75 +143,143 @@ export default function ImportResumeModal({ open, onClose, onSuccess }) {
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mb-6">
-          Upload a PDF resume to import it into your library. The text will be extracted and you can refine it in Resume Studio.
-        </p>
-
-        {!file ? (
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-              dragOver
-                ? "border-primary bg-primary/5"
-                : "border-gray-300 hover:border-primary/50 hover:bg-gray-50"
-            }`}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-            <p className="font-medium text-gray-700">Drop your PDF here or click to browse</p>
-            <p className="text-sm text-gray-400 mt-1">PDF only, up to 10MB</p>
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
-        ) : (
-          <div className="border rounded-xl p-4 bg-gray-50">
-            <div className="flex items-center gap-3">
-              <FileText className="w-8 h-8 text-primary shrink-0" />
-              <div className="min-w-0">
-                <p className="font-medium truncate">{file.name}</p>
-                <p className="text-sm text-gray-500">
-                  {(file.size / 1024 / 1024).toFixed(1)} MB
-                </p>
-              </div>
-              <button
-                onClick={() => { setFile(null); setError(null); }}
-                disabled={uploading}
-                className="ml-auto p-1 rounded-md hover:bg-gray-200 disabled:opacity-50"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className="p-6 overflow-y-auto flex-1">
+          {/* Step indicators */}
+          <div className="flex items-center gap-2 mb-6">
+            <div
+              className={`flex items-center gap-1.5 text-sm ${
+                step === STEP_UPLOAD ? "text-primary font-semibold" : "text-green-600"
+              }`}
+            >
+              {step !== STEP_UPLOAD ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-primary" />
+              )}
+              Upload
+            </div>
+            <div className="flex-1 h-px bg-gray-200" />
+            <div
+              className={`flex items-center gap-1.5 text-sm ${
+                step === STEP_PARSING
+                  ? "text-primary font-semibold"
+                  : step === STEP_REVIEW
+                  ? "text-green-600"
+                  : "text-gray-400"
+              }`}
+            >
+              {(step === STEP_REVIEW || step === STEP_PARSING) &&
+              step !== STEP_PARSING ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : step === STEP_PARSING ? (
+                <span className="w-2 h-2 rounded-full bg-primary" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-gray-300" />
+              )}
+              Parse
+            </div>
+            <div className="flex-1 h-px bg-gray-200" />
+            <div
+              className={`flex items-center gap-1.5 text-sm ${
+                step === STEP_REVIEW ? "text-primary font-semibold" : "text-gray-400"
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  step === STEP_REVIEW ? "bg-primary" : "bg-gray-300"
+                }`}
+              />
+              Review
             </div>
           </div>
-        )}
 
-        {error && (
-          <div className="mt-4 flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+          {step === STEP_UPLOAD && (
+            <div>
+              <p className="text-sm text-gray-500 mb-6">
+                Upload a PDF resume to import it into your library. The text will be extracted and you can review before saving.
+              </p>
 
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={handleClose} disabled={uploading}>
-            Cancel
-          </Button>
-          <Button onClick={handleUpload} disabled={!file || uploading}>
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Importing...
-              </>
-            ) : (
-              "Import Resume"
-            )}
-          </Button>
+              {!file ? (
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                    dragOver
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-300 hover:border-primary/50 hover:bg-gray-50"
+                  }`}
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+                  <p className="font-medium text-gray-700">Drop your PDF here or click to browse</p>
+                  <p className="text-sm text-gray-400 mt-1">PDF only, up to 10MB</p>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </div>
+              ) : (
+                <div className="border rounded-xl p-4 bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-8 h-8 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{file.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {(file.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setFile(null); setError(null); }}
+                      className="ml-auto p-1 rounded-md hover:bg-gray-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-4 flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 mt-6">
+                <Button variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button onClick={handleParse} disabled={!file}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Parse Resume
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === STEP_PARSING && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+              <p className="text-lg font-medium text-gray-900">Analyzing your resume...</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Extracting and structuring your resume information
+              </p>
+            </div>
+          )}
+
+          {step === STEP_REVIEW && parsedData && (
+            <ImportReviewStep
+              parsedData={parsedData}
+              sourceMeta={sourceMeta}
+              resumeName={resumeName}
+              onCancel={handleReviewCancel}
+              onSuccess={handleReviewSuccess}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -70,14 +70,22 @@ export default function Dashboard() {
     if (!restore.isPending) restore.mutate(id);
   };
 
-  const handleDelete = (resume) => {
-    setDeleteTarget(resume);
-    setShowDeleteModal(true);
+  const handleDelete = (id) => {
+    const resume = resumes.find(r => r.id === id);
+    if (resume) {
+      setDeleteTarget(resume);
+      setShowDeleteModal(true);
+    }
   };
 
   const handleConfirmDelete = () => {
     if (deleteTarget && !remove.isPending) {
-      remove.mutate(deleteTarget.id);
+      remove.mutate(deleteTarget.id, {
+        onSettled: () => {
+          setShowDeleteModal(false);
+          setDeleteTarget(null);
+        },
+      });
     }
   };
 

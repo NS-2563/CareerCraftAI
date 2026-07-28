@@ -133,3 +133,146 @@ class AIProvider(ABC):
             Edited cover letter content
         """
         pass
+
+    @abstractmethod
+    def generate_cold_email(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_role: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+        resume_summary: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Generate a cold outreach email.
+
+        Args:
+            recipient_name: Name of the recipient
+            recipient_role: Role/title of the recipient
+            recipient_company: Company name
+            tone: Tone (professional, friendly, executive, creative)
+            custom_context: Additional context from the user
+            resume_summary: Optional resume summary for personalization
+
+        Returns:
+            Dict with 'subject' and 'body' keys
+        """
+        pass
+
+    @abstractmethod
+    def generate_follow_up(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Generate a follow-up email after an application.
+
+        Args:
+            recipient_name: Name of the recipient
+            recipient_company: Company name
+            tone: Tone (professional, friendly, executive, creative)
+            custom_context: Additional context from the user
+
+        Returns:
+            Dict with 'subject' and 'body' keys
+        """
+        pass
+
+    @abstractmethod
+    def generate_thank_you(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Generate a post-interview thank-you note.
+
+        Args:
+            recipient_name: Name of the recipient
+            recipient_company: Company name
+            tone: Tone (professional, friendly, executive, creative)
+            custom_context: Additional context from the user
+
+        Returns:
+            Dict with 'subject' and 'body' keys
+        """
+        pass
+
+    @abstractmethod
+    def generate_linkedin_note(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_role: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+        resume_summary: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Generate a short LinkedIn connection note (max ~300 chars).
+
+        Args:
+            recipient_name: Name of the recipient
+            recipient_role: Role/title of the recipient
+            recipient_company: Company name
+            tone: Tone (professional, friendly, executive, creative)
+            custom_context: Additional context from the user
+            resume_summary: Optional resume summary for personalization
+
+        Returns:
+            Dict with 'subject' (empty) and 'body' keys
+        """
+        pass
+
+    @abstractmethod
+    def generate_recruiter_reply(
+        self,
+        inbound_message: str,
+        reply_intent: str,
+        recipient_name: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Generate a reply to an inbound recruiter message.
+
+        Args:
+            inbound_message: The original message from the recruiter
+            reply_intent: The candidate's intent (accept_interest, decline_politely,
+                         negotiate_timing, ask_clarifying_questions)
+            recipient_name: Name of the recruiter (optional)
+            recipient_company: Company name (optional)
+            tone: Tone (professional, friendly, executive, creative)
+            custom_context: Additional context from the user
+
+        Returns:
+            Dict with 'subject' and 'body' keys
+        """
+        pass
+
+    @abstractmethod
+    def generate_referral_request(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_role: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+        resume_summary: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Generate a referral request message.
+
+        Args:
+            recipient_name: Name of the recipient
+            recipient_role: Role/title of the recipient
+            recipient_company: Company name
+            tone: Tone (professional, friendly, executive, creative)
+            custom_context: Additional context from the user
+            resume_summary: Optional resume summary for personalization
+
+        Returns:
+            Dict with 'subject' and 'body' keys
+        """
+        pass

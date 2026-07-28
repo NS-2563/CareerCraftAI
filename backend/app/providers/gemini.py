@@ -2,7 +2,7 @@
 import json
 import logging
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from google.api_core.exceptions import TooManyRequests, GoogleAPICallError
 from google.genai import Client
@@ -73,8 +73,10 @@ class GeminiProvider(AIProvider):
         Uses google-genai SDK call patterns compatible with v0.5.0.
         """
         last_error: Optional[Exception] = None
+        logger.info(f"[DIAG] _generate_content starting: model={self.model_name!r}, max_retries={max_retries}")
 
         for attempt in range(max_retries + 1):
+            logger.info(f"[DIAG] _generate_content attempt {attempt + 1}/{max_retries + 1}")
             try:
                 response = self.client.models.generate_content(
                     model=self.model_name,
@@ -87,22 +89,19 @@ class GeminiProvider(AIProvider):
 
                 last_error = ValueError("Empty response from Gemini API")
             except TooManyRequests as e:
-                logger.warning(
-                    f"Rate limit exceeded (attempt {attempt + 1}/{max_retries + 1})"
-                )
+                logger.warning(f"[DIAG] TooManyRequests (attempt {attempt + 1}/{max_retries + 1}): {e}")
                 last_error = e
                 if attempt < max_retries:
+                    logger.info(f"[DIAG] Retrying after 429 (backoff {2 ** attempt}s)")
                     time.sleep(2 ** attempt)  # Exponential backoff
             except GoogleAPICallError as e:
-                logger.error(f"Gemini API error: {e}")
-
-                # google-genai v0.5.x raises 429 as google.genai.errors.ClientError
-                # with status_code in the exception.
                 status_code = getattr(e, "status_code", None)
+                logger.error(f"[DIAG] GoogleAPICallError (attempt {attempt + 1}/{max_retries + 1}): status_code={status_code}, model={self.model_name!r}, error={e}")
 
                 # Resource exhausted/quota exceeded
                 if status_code == 429 or "RESOURCE_EXHAUSTED" in str(e).upper():
                     if attempt < max_retries:
+                        logger.info(f"[DIAG] Retrying after 429 (backoff {2 ** attempt}s)")
                         time.sleep(2 ** attempt)
                         last_error = e
                         continue
@@ -119,10 +118,11 @@ class GeminiProvider(AIProvider):
                     continue
                 raise
             except ClientError as e:
-                logger.error(f"Gemini client error: {e}")
                 status_code = getattr(e, "status_code", None)
+                logger.error(f"[DIAG] ClientError (attempt {attempt + 1}/{max_retries + 1}): status_code={status_code}, model={self.model_name!r}, error={e}")
                 if status_code == 429 or "RESOURCE_EXHAUSTED" in str(e).upper():
                     if attempt < max_retries:
+                        logger.info(f"[DIAG] Retrying after 429 (backoff {2 ** attempt}s)")
                         time.sleep(2 ** attempt)
                         last_error = e
                         continue
@@ -141,7 +141,9 @@ class GeminiProvider(AIProvider):
 
 
         if last_error:
+            logger.error(f"[DIAG] _generate_content exhausted all retries, raising: {type(last_error).__name__}: {last_error}")
             raise last_error
+        logger.warning("[DIAG] _generate_content returned empty string (no error, no content)")
         return ""
 
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
@@ -239,13 +241,14 @@ class GeminiProvider(AIProvider):
         except Exception as e:
             logger.warning(f"Failed to parse analysis response as JSON: {e}")
 
-        # Return fallback structure
+        # Return fallback structure signalling failure
         return {
-            "resume_score": 70,
-            "ats_score": 75,
-            "suggestions": ["Unable to analyze resume properly"],
-            "strengths": ["Resume structure present"],
-            "weaknesses": ["Analysis incomplete"],
+            "analysis_failed": True,
+            "resume_score": None,
+            "ats_score": None,
+            "suggestions": [],
+            "strengths": [],
+            "weaknesses": [],
         }
 
     def generate_cover_letter(
@@ -377,4 +380,149 @@ Keep it concise (250-400 words) and ATS-friendly. Use standard business letter f
 
         return self._generate_content(prompt)
 
+    def _parse_subject_body_response(self, response: str) -> Dict[str, str]:
+        """Parse SUBJECT:/BODY: delimited AI response into a dict.
 
+        More robust than JSON parsing for email content since email bodies
+        may contain braces, quotes, and other JSON-special characters.
+        """
+        subject = ""
+        body = response.strip()
+
+        lines = response.split("\n", 1)
+        first_line = lines[0].strip()
+
+        subject_marker = "SUBJECT:"
+        if first_line.upper().startswith(subject_marker):
+            subject = first_line[len(subject_marker):].strip()
+            body = lines[1].strip() if len(lines) > 1 else ""
+
+        body = body.strip().strip('"').strip("'")
+        return {"subject": subject, "body": body}
+
+    def generate_cold_email(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_role: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+        resume_summary: Optional[str] = None,
+    ) -> Dict[str, str]:
+        from app.prompts.communication import cold_email_prompt
+
+        prompt = cold_email_prompt(
+            recipient_name=recipient_name,
+            recipient_role=recipient_role,
+            recipient_company=recipient_company,
+            tone=tone,
+            custom_context=custom_context,
+            resume_summary=resume_summary,
+        )
+        response = self._generate_content(prompt)
+        return self._parse_subject_body_response(response)
+
+    def generate_follow_up(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+    ) -> Dict[str, str]:
+        from app.prompts.communication import follow_up_prompt
+
+        prompt = follow_up_prompt(
+            recipient_name=recipient_name,
+            recipient_company=recipient_company,
+            tone=tone,
+            custom_context=custom_context,
+        )
+        response = self._generate_content(prompt)
+        return self._parse_subject_body_response(response)
+
+    def generate_thank_you(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+    ) -> Dict[str, str]:
+        from app.prompts.communication import thank_you_prompt
+
+        prompt = thank_you_prompt(
+            recipient_name=recipient_name,
+            recipient_company=recipient_company,
+            tone=tone,
+            custom_context=custom_context,
+        )
+        response = self._generate_content(prompt)
+        return self._parse_subject_body_response(response)
+
+    def generate_linkedin_note(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_role: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+        resume_summary: Optional[str] = None,
+    ) -> Dict[str, str]:
+        from app.prompts.communication import linkedin_note_prompt
+
+        prompt = linkedin_note_prompt(
+            recipient_name=recipient_name,
+            recipient_role=recipient_role,
+            recipient_company=recipient_company,
+            tone=tone,
+            custom_context=custom_context,
+            resume_summary=resume_summary,
+        )
+        response = self._generate_content(prompt)
+        body = response.strip().strip('"').strip("'")
+        if len(body) > 300:
+            body = body[:300]
+        return {"subject": "", "body": body}
+
+    def generate_recruiter_reply(
+        self,
+        inbound_message: str,
+        reply_intent: str,
+        recipient_name: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+    ) -> Dict[str, str]:
+        from app.prompts.communication import recruiter_reply_prompt
+
+        prompt = recruiter_reply_prompt(
+            inbound_message=inbound_message,
+            reply_intent=reply_intent,
+            tone=tone,
+            recipient_name=recipient_name,
+            recipient_company=recipient_company,
+            custom_context=custom_context,
+        )
+        response = self._generate_content(prompt)
+        return self._parse_subject_body_response(response)
+
+    def generate_referral_request(
+        self,
+        recipient_name: Optional[str] = None,
+        recipient_role: Optional[str] = None,
+        recipient_company: Optional[str] = None,
+        tone: str = "professional",
+        custom_context: Optional[str] = None,
+        resume_summary: Optional[str] = None,
+    ) -> Dict[str, str]:
+        from app.prompts.communication import referral_request_prompt
+
+        prompt = referral_request_prompt(
+            recipient_name=recipient_name,
+            recipient_role=recipient_role,
+            recipient_company=recipient_company,
+            tone=tone,
+            custom_context=custom_context,
+            resume_summary=resume_summary,
+        )
+        response = self._generate_content(prompt)
+        return self._parse_subject_body_response(response)

@@ -76,6 +76,13 @@ export default function AIAssistantPanel() {
               {/* Analysis Results */}
               {analysis && !loading && (
                 <div className="space-y-4">
+                  {/* Analysis Failure State */}
+                  {analysis.analysisFailed && (
+                    <div className="p-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                      We couldn't complete this analysis — please try again.
+                    </div>
+                  )}
+
                   {/* Score Cards */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 rounded-lg bg-muted/30">
@@ -84,7 +91,7 @@ export default function AIAssistantPanel() {
                         Resume Score
                       </div>
                       <div className="text-2xl font-bold">
-                        {analysis.resumeScore}
+                        {analysis.resumeScore ?? "—"}
                         <span className="text-sm font-normal text-muted-foreground">
                           {" "}
                           / 100
@@ -98,7 +105,7 @@ export default function AIAssistantPanel() {
                         ATS Score
                       </div>
                       <div className="text-2xl font-bold">
-                        {analysis.atsScore}
+                        {analysis.atsScore ?? "—"}
                         <span className="text-sm font-normal text-muted-foreground">
                           {" "}
                           / 100

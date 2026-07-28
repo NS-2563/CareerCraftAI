@@ -10,7 +10,7 @@ class Resume(Base):
     __tablename__ = "resumes"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Resume data stored as JSON (using Text with JSON encoding)
     personal = Column(Text, default="{}")
@@ -41,6 +41,7 @@ class Resume(Base):
     # Relationships
     user = relationship("User", back_populates="resumes")
     cover_letters = relationship("CoverLetter", back_populates="resume", cascade="all, delete-orphan")
+    resume_analyses = relationship("ResumeAnalysis", back_populates="resume", cascade="all, delete-orphan")
 
     def _load_json(self, field):
         if field:

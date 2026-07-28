@@ -1,10 +1,10 @@
 import logging
 import time
 
-from app.ai.gemini_service import ask_gemini
 from app.ai.json_parser import extract_json, JSONParseError
 from app.ai.json_validator import validate_json, JSONValidationError
 from app.ai.response_repair import try_repair_json
+from app.providers.factory import get_provider
 
 
 logger = logging.getLogger(__name__)
@@ -47,10 +47,8 @@ def generate_json(prompt: str, schema: dict):
                 retries,
             )
 
-            response = ask_gemini(
-                prompt=prompt,
-                expect_json=False,
-            )
+            provider = get_provider()
+            response = provider._generate_content(prompt)
 
             try:
 

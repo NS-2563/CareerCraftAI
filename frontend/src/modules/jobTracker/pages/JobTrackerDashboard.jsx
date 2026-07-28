@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { useSuggestions } from "@/communication/hooks/useSuggestions";
 
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,8 @@ function formatNumber(value) {
 }
 
 export default function JobTrackerDashboard() {
+  const navigate = useNavigate();
+
   const {
     data: statsData,
     isLoading: isStatsLoading,
@@ -80,6 +84,11 @@ export default function JobTrackerDashboard() {
 
   const jobs = Array.isArray(jobsData) ? jobsData : [];
 
+  const { data: suggestions = [] } = useSuggestions();
+  const suggestionJobIds = useMemo(
+    () => new Set(suggestions.map((s) => Number(s.job_application_id))),
+    [suggestions]
+  );
 
   const stats = useMemo(() => {
     const s = statsData || {};
@@ -214,6 +223,7 @@ export default function JobTrackerDashboard() {
           <JobTable
             jobs={jobs}
             formatDate={formatDate}
+            suggestionJobIds={suggestionJobIds}
             onView={(job) => {
               setSelectedJobId(job?.id);
               setViewOpen(true);
@@ -232,6 +242,9 @@ export default function JobTrackerDashboard() {
               setDeleteOpen(true);
               setViewOpen(false);
               setEditOpen(false);
+            }}
+            onDraftMessage={(job) => {
+              navigate(`/communication?jobId=${job.id}`);
             }}
           />
         )}

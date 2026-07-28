@@ -1,4 +1,5 @@
-export default function Communication() {
-    return <h1>Communication</h1>;
-}
+import CommunicationHub from "@/communication/pages/CommunicationHub";
 
+export default function Communication() {
+  return <CommunicationHub />;
+}

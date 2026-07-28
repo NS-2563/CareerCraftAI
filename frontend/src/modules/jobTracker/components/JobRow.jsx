@@ -1,4 +1,4 @@
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, MessageSquare, BellDot } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,11 +10,18 @@ export default function JobRow({
   onView = () => {},
   onEdit = () => {},
   onDelete = () => {},
+  onDraftMessage = () => {},
+  hasSuggestion = false,
 }) {
   return (
     <tr className={cn("border-b last:border-b-0")}> 
       <td className="px-4 py-4 align-top whitespace-nowrap">
-        {job.company || "—"}
+        <div className="flex items-center gap-1.5">
+          {hasSuggestion && (
+            <BellDot className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          )}
+          <span>{job.company || "—"}</span>
+        </div>
       </td>
       <td className="px-4 py-4 align-top whitespace-nowrap">
         {job.job_title || "—"}
@@ -45,6 +52,15 @@ export default function JobRow({
             className="inline-flex items-center justify-center rounded-md p-1 hover:bg-muted"
           >
             <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Draft message"
+            onClick={() => onDraftMessage(job)}
+            className="inline-flex items-center justify-center rounded-md p-1 hover:bg-muted"
+            title="Draft a communication message for this job"
+          >
+            <MessageSquare className="h-4 w-4" />
           </button>
           <button
             type="button"

@@ -143,6 +143,7 @@ export async function analyzeResume(resumeData, signal) {
       data: {
         resumeScore: response.data.resume_score,
         atsScore: response.data.ats_score,
+        analysisFailed: response.data.analysis_failed,
         suggestions: response.data.suggestions,
         strengths: response.data.strengths,
         weaknesses: response.data.weaknesses,

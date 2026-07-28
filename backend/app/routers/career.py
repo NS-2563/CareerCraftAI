@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_active_user
+from app.main import limiter
 
 from app.models.user import User
 from app.schemas.career import CareerCoachRequest
@@ -19,7 +21,9 @@ router = APIRouter()
 
 
 @router.post("/career-coach")
+@limiter.limit(f"{settings.RATE_LIMIT_CAREER_COACH};{settings.RATE_LIMIT_CAREER_COACH_DAILY}")
 def coach(
+    request: Request,
     data: CareerCoachRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

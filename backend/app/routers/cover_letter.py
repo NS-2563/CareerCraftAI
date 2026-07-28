@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, Request, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_active_user
+from app.main import limiter
 from app.models.user import User
 from app.models.resume import Resume
 from app.schemas.cover_letter import (
@@ -18,14 +20,14 @@ from app.schemas.cover_letter import (
 )
 from app.schemas.cover_letter_ai import GenerateCoverLetterRequest, GenerateCoverLetterResponse, AICoverLetterEditRequest, AICoverLetterEditResponse
 from app.services.cover_letter_service import CoverLetterService
-from app.providers.gemini import GeminiProvider
 
 router = APIRouter(prefix="/api/cover-letter", tags=["CoverLetter"])
 
 
 def _get_ai_provider():
     """Get AI provider instance."""
-    return GeminiProvider()
+    from app.providers.factory import get_provider
+    return get_provider()
 
 
 def _build_generation_prompt(
@@ -297,8 +299,10 @@ def restore_version(
 
 # AI Generation endpoints
 @router.post("/generate", response_model=GenerateCoverLetterResponse)
+@limiter.limit(f"{settings.RATE_LIMIT_COVER_LETTER};{settings.RATE_LIMIT_COVER_LETTER_DAILY}")
 def generate_ai_cover_letter(
-    request: GenerateCoverLetterRequest,
+    request: Request,
+    body: GenerateCoverLetterRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -307,9 +311,9 @@ def generate_ai_cover_letter(
 
     # Get resume data if provided
     resume_data = None
-    if request.resume_id:
+    if body.resume_id:
         resume = db.query(Resume).filter(
-            Resume.id == request.resume_id,
+            Resume.id == body.resume_id,
             Resume.user_id == current_user.id,
         ).first()
         if resume:
@@ -317,10 +321,10 @@ def generate_ai_cover_letter(
 
     prompt = _build_generation_prompt(
         resume_data,
-        request.job_title,
-        request.company_name,
-        request.job_description,
-        request.tone,
+        body.job_title,
+        body.company_name,
+        body.job_description,
+        body.tone,
     )
 
     content = provider._generate_content(prompt)
@@ -329,9 +333,11 @@ def generate_ai_cover_letter(
 
 
 @router.post("/{cover_letter_id}/generate", response_model=CoverLetterGenerateRequest)
+@limiter.limit(f"{settings.RATE_LIMIT_COVER_LETTER};{settings.RATE_LIMIT_COVER_LETTER_DAILY}")
 def generate_for_existing(
+    request: Request,
     cover_letter_id: int,
-    request: GenerateCoverLetterRequest,
+    body: GenerateCoverLetterRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -341,9 +347,9 @@ def generate_for_existing(
 
     # Get resume data if provided
     resume_data = None
-    if request.resume_id:
+    if body.resume_id:
         resume = db.query(Resume).filter(
-            Resume.id == request.resume_id,
+            Resume.id == body.resume_id,
             Resume.user_id == current_user.id,
         ).first()
         if resume:
@@ -351,10 +357,10 @@ def generate_for_existing(
 
     prompt = _build_generation_prompt(
         resume_data,
-        request.job_title,
-        request.company_name,
-        request.job_description,
-        request.tone,
+        body.job_title,
+        body.company_name,
+        body.job_description,
+        body.tone,
     )
 
     content = provider._generate_content(prompt)
@@ -363,10 +369,10 @@ def generate_for_existing(
     from app.schemas.cover_letter import CoverLetterUpdate
     update_data = CoverLetterUpdate(
         content=content,
-        job_title=request.job_title,
-        company_name=request.company_name,
-        job_description=request.job_description,
-        tone=request.tone,
+        job_title=body.job_title,
+        company_name=body.company_name,
+        job_description=body.job_description,
+        tone=body.tone,
     )
 
     cover_letter = CoverLetterService.update(db, cover_letter_id, current_user.id, update_data)
@@ -375,9 +381,11 @@ def generate_for_existing(
 
 # AI Editing endpoints
 @router.post("/{cover_letter_id}/edit", response_model=AICoverLetterEditResponse)
+@limiter.limit(f"{settings.RATE_LIMIT_COVER_LETTER};{settings.RATE_LIMIT_COVER_LETTER_DAILY}")
 def ai_edit_cover_letter(
+    request: Request,
     cover_letter_id: int,
-    request: AICoverLetterEditRequest,
+    body: AICoverLetterEditRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -385,26 +393,28 @@ def ai_edit_cover_letter(
     cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, current_user.id)
     provider = _get_ai_provider()
 
-    content = request.content or cover_letter.content or ""
-    job_title = request.job_title or cover_letter.job_title
-    company_name = request.company_name or cover_letter.company_name
+    content = body.content or cover_letter.content or ""
+    job_title = body.job_title or cover_letter.job_title
+    company_name = body.company_name or cover_letter.company_name
 
     # Validate action
     valid_actions = ["improve", "rewrite", "shorten", "expand", "grammar_fix", "ats_optimize"]
-    if request.action not in valid_actions:
+    if body.action not in valid_actions:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=f"Invalid action. Must be one of: {', '.join(valid_actions)}")
 
-    prompt = _build_edit_prompt(request.action, content, job_title, company_name)
+    prompt = _build_edit_prompt(body.action, content, job_title, company_name)
     new_content = provider._generate_content(prompt)
 
     return AICoverLetterEditResponse(content=new_content)
 
 
 @router.post("/{cover_letter_id}/apply-edit", response_model=CoverLetterResponse)
+@limiter.limit(f"{settings.RATE_LIMIT_COVER_LETTER};{settings.RATE_LIMIT_COVER_LETTER_DAILY}")
 def apply_ai_edit(
+    request: Request,
     cover_letter_id: int,
-    request: AICoverLetterEditRequest,
+    body: AICoverLetterEditRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -412,17 +422,17 @@ def apply_ai_edit(
     cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, current_user.id)
     provider = _get_ai_provider()
 
-    content = request.content or cover_letter.content or ""
-    job_title = request.job_title or cover_letter.job_title
-    company_name = request.company_name or cover_letter.company_name
+    content = body.content or cover_letter.content or ""
+    job_title = body.job_title or cover_letter.job_title
+    company_name = body.company_name or cover_letter.company_name
 
     # Validate action
     valid_actions = ["improve", "rewrite", "shorten", "expand", "grammar_fix", "ats_optimize"]
-    if request.action not in valid_actions:
+    if body.action not in valid_actions:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=f"Invalid action. Must be one of: {', '.join(valid_actions)}")
 
-    prompt = _build_edit_prompt(request.action, content, job_title, company_name)
+    prompt = _build_edit_prompt(body.action, content, job_title, company_name)
     new_content = provider._generate_content(prompt)
 
     # Update the cover letter

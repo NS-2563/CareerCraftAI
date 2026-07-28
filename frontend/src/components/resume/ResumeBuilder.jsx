@@ -5,7 +5,7 @@ import ResumeWizard from "./wizard/ResumeWizard";
 import AIAssistantPanel from "@/components/ai/AIAssistantPanel";
 import { useResumeContext } from "@/context/useResumeContext";
 
-export default function ResumeBuilder() {
+export default function ResumeBuilder({ initialSection }) {
   const { selectedTemplate, setSelectedTemplate } = useResumeContext();
   const previewRef = useRef(null);
 
@@ -99,7 +99,7 @@ export default function ResumeBuilder() {
             Resume Editor
           </h2>
 
-          <ResumeWizard />
+          <ResumeWizard initialSection={initialSection} />
 
         </main>
 

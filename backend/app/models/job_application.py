@@ -44,6 +44,13 @@ class JobApplication(Base):
     applied_date = Column(Date, nullable=True)
     deadline = Column(Date, nullable=True)
 
+    job_description = Column(Text, nullable=True)
+    resume_id = Column(
+        Integer,
+        ForeignKey("resumes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -58,3 +65,5 @@ class JobApplication(Base):
         "User",
         back_populates="job_applications",
     )
+
+    resume = relationship("Resume", foreign_keys=[resume_id])
