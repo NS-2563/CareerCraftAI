@@ -64,3 +64,6 @@ htmlcov/
 
 # Allow templates
 !**/.env.example
+
+PRODUCTION_AUDIT.md
+REPO_HEALTH_REPORT.md
