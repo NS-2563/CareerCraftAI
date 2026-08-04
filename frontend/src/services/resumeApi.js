@@ -5,25 +5,6 @@ const API_BASE = "/api/resume";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const mockResumes = [
-  {
-    id: 1,
-    name: "Software Engineer Resume",
-    updated_at: "2024-01-15T10:30:00Z",
-    completed: false,
-    version: 1,
-    is_archived: false,
-  },
-  {
-    id: 2,
-    name: "Product Manager Resume",
-    updated_at: "2024-01-10T14:20:00Z",
-    completed: true,
-    version: 1,
-    is_archived: false,
-  },
-];
-
 /* ============================================================
    LIST
 ============================================================ */

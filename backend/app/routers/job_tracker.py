@@ -7,12 +7,18 @@ from app.database import get_db
 from app.dependencies import get_current_active_user
 from app.models.user import User
 from app.job_tracker.services.job_tracker_service import JobTrackerService
+from app.job_tracker.workspace import (
+    build_workspace_payload,
+    dismiss_insight,
+    get_dismissed_keys,
+)
 from app.schemas.job_tracker import (
     JobApplicationCreate,
     JobApplicationResponse,
     JobApplicationUpdate,
     JobStatsResponse,
 )
+from app.utils.response import deleted_response, success_response
 
 router = APIRouter(prefix="/api/jobs", tags=["Job Tracker"])
 
@@ -70,6 +76,51 @@ def get_job(
     return job
 
 
+@router.get("/{job_id}/workspace")
+def get_job_workspace(
+    job_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Deterministic workspace header for an application.
+
+    Returns the single recommended next action (a fixed decision tree over real
+    completion state — never an AI decision), the non-dismissed insight cards
+    (JD match gaps, resume analysis suggestions), and the dismissed insight keys
+    for this user+application. Ownership-checked.
+    """
+    job = JobTrackerService.get_job(db=db, job_id=job_id, user_id=current_user.id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job application not found.",
+        )
+    payload = build_workspace_payload(db, current_user.id, job)
+    return success_response(data=payload)
+
+
+@router.post("/{job_id}/workspace/insights/{insight_key}/dismiss")
+def dismiss_workspace_insight(
+    job_id: int,
+    insight_key: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Dismiss an insight card for this application so it does not reappear.
+
+    Persists a user-scoped dismissal row; returning the updated dismissed list
+    lets the client stay in sync without another round-trip.
+    """
+    job = JobTrackerService.get_job(db=db, job_id=job_id, user_id=current_user.id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job application not found.",
+        )
+    dismissed = dismiss_insight(db, current_user.id, job_id, insight_key)
+    return success_response(data={"dismissed": dismissed})
+
+
 @router.post("", response_model=JobApplicationResponse, status_code=status.HTTP_201_CREATED)
 def create_job(
     job_data: JobApplicationCreate,
@@ -123,9 +174,6 @@ def delete_job(
             detail="Job application not found.",
         )
 
-    return {
-        "success": True,
-        "message": "Job application deleted.",
-    }
+    return deleted_response(message="Job application deleted.")
 
 

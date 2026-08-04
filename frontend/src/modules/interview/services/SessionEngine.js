@@ -46,6 +46,7 @@ export class SessionEngine {
 
       createdAtEpochMs: Date.now(),
       answers: [],
+      evaluations: [],
 
       interviewMode,
       difficulty,
@@ -217,6 +218,9 @@ export class SessionEngine {
     const answerMap = new Map(
       session.answers.map((a) => [a.questionId, a])
     );
+    const evaluationMap = new Map(
+      session.evaluations?.map((e) => [e.questionId, e]) ?? []
+    );
 
     return {
       sessionId: session.sessionId,
@@ -229,6 +233,7 @@ export class SessionEngine {
       questions: session.questionIds.map((id) => {
         const question = questionMap.get(id);
         const answer = answerMap.get(id);
+        const evaluation = evaluationMap.get(id);
 
         return {
           questionId: id,
@@ -236,9 +241,28 @@ export class SessionEngine {
           answerText: answer?.answer ?? "",
           skipped: answer?.skipped ?? false,
           submittedAtEpochMs: answer?.answeredAt,
+          evaluation: evaluation ?? null,
         };
       }),
     };
+  }
+
+  saveEvaluation(session, evaluation) {
+    const next = this._cloneSession(session);
+
+    if (!evaluation?.questionId) return next;
+
+    const index = next.evaluations.findIndex(
+      (e) => e.questionId === evaluation.questionId
+    );
+
+    if (index >= 0) {
+      next.evaluations[index] = { ...evaluation };
+    } else {
+      next.evaluations.push({ ...evaluation });
+    }
+
+    return next;
   }
 
   _cloneSession(session) {
@@ -246,6 +270,9 @@ export class SessionEngine {
       ...session,
       answers: Array.isArray(session.answers)
         ? session.answers.map((a) => ({ ...a }))
+        : [],
+      evaluations: Array.isArray(session.evaluations)
+        ? session.evaluations.map((e) => ({ ...e }))
         : [],
     };
   }

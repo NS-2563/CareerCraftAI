@@ -35,7 +35,7 @@ export default function FinishResumeButton({ disabled }) {
 
       setStatus("saved");
 
-      navigate("/");
+      navigate("/resumes");
     } catch (err) {
       setError(err?.message || "Finish failed");
       setStatus(null);

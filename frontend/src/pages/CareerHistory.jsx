@@ -5,6 +5,7 @@ import historyApi from "@/services/historyApi";
 import CareerHistoryEmpty from "@/components/career/CareerHistoryEmpty";
 import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
 import LoadingState from "@/components/career/LoadingState";
+import { ScoreTooltip } from "@/components/ui/atoms";
 import { toast } from "sonner";
 export default function CareerHistory() {
   const [reports, setReports] = useState([]);
@@ -19,7 +20,7 @@ export default function CareerHistory() {
     try {
       const response = await historyApi.getHistory();
       setReports(response.data);
-      console.log("History API:", response.data);
+      
     } catch (error) {
       console.error(error);
       toast.error("Failed to load career history.");
@@ -61,8 +62,8 @@ export default function CareerHistory() {
     </div>
   );
 }
-  console.log("Reports:", reports);
-console.log("Filtered:", filteredReports);
+  
+
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -115,9 +116,11 @@ console.log("Filtered:", filteredReports);
         <div className="mt-5 grid md:grid-cols-3 gap-4">
           <div>
             <div className="text-gray-500 text-sm">Readiness Score</div>
-            <div className="text-2xl font-bold">
-              {report.readiness_score}%
-            </div>
+            <ScoreTooltip description="Weighted blend: 40% your ATS resume score, 30% skill match, 15% for having a Projects section, and 15% for Certifications.">
+              <div className="text-2xl font-bold cursor-help">
+                {report.readiness_score}%
+              </div>
+            </ScoreTooltip>
           </div>
 
           <div>

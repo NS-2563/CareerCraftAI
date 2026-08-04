@@ -74,7 +74,10 @@ export default function Skills() {
   const showRemove = skills.length > 1;
 
   async function handleSuggestSkills() {
-    const result = await execute(suggestSkillsAI, resumeData.skills || []);
+    const skillNames = (resumeData.skills || [])
+      .map((s) => s.name)
+      .filter(Boolean);
+    const result = await execute(suggestSkillsAI, skillNames);
 
     if (Array.isArray(result) && result.length > 0) {
       const currentSkills = resumeData.skills || [];
@@ -82,12 +85,12 @@ export default function Skills() {
         .map((s) => s.name?.toLowerCase())
         .filter(Boolean);
 
-      const newSkills = result.filter(
-        (s) => !existingNames.includes(s.name?.toLowerCase())
+      const newSkillNames = result.filter(
+        (name) => !existingNames.includes(name.toLowerCase())
       );
 
-      newSkills.forEach((skill) => {
-        addItem("skills", skill);
+      newSkillNames.forEach((name) => {
+        addItem("skills", { name, category: "" });
       });
     }
   }

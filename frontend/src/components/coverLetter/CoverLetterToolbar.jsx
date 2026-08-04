@@ -29,6 +29,7 @@ export default function CoverLetterToolbar({
   isGenerating,
   isSaving,
   isExporting,
+  canGenerate,
 }) {
   const [setShowActions] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -73,7 +74,12 @@ export default function CoverLetterToolbar({
           <button
             className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
             onClick={onGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !canGenerate}
+            title={
+              canGenerate
+                ? "Generate with AI"
+                : "Add a job title and company name to generate"
+            }
           >
             <Edit3 className="w-4 h-4" />
             {isGenerating ? "Generating..." : "Generate AI"}

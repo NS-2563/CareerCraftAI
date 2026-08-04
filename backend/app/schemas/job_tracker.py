@@ -4,7 +4,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class JobStatus(str, Enum):
@@ -132,6 +132,7 @@ class JobDescriptionMatchRequest(BaseModel):
     resume_id: Optional[int] = Field(None, description="ID of saved resume to load")
     resume_data: Optional[dict[str, Any]] = Field(None, description="Inline resume data (camelCase or snake_case)")
     enable_ai: bool = Field(False, description="Enable AI-powered semantic matching")
+    job_application_id: Optional[int] = Field(None, description="Optional job application to persist the match result against")
 
 
 class JobDescriptionMatchResponse(BaseModel):
@@ -146,4 +147,32 @@ class JobDescriptionMatchResponse(BaseModel):
     recommendations: list[str] = []
     ai_semantic_assessment: Optional[AiSemanticAssessment] = None
     deterministic: DeterministicMatchResult = DeterministicMatchResult()
+
+
+class JDMatchResultResponse(BaseModel):
+    """Persisted JD match result for a job application."""
+
+    id: int
+    job_application_id: Optional[int] = None
+    resume_id: Optional[int] = None
+    match_score: float
+    matched_skills: list[JdMatchSkillItem] = []
+    missing_skills: list[JdMatchSkillItem] = []
+    used_ai: bool = False
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("matched_skills", "missing_skills", mode="before")
+    @classmethod
+    def _parse_json_skills(cls, value):
+        """The stored columns hold JSON text; parse them into skill items."""
+        if isinstance(value, str):
+            import json as _json
+            try:
+                parsed = _json.loads(value)
+            except Exception:
+                return []
+            return parsed if isinstance(parsed, list) else []
+        return value if value is not None else []
 

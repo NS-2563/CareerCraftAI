@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useSuggestions } from "@/communication/hooks/useSuggestions";
+import ApplicationLinkedResources from "../components/ApplicationLinkedResources";
 
 
 import { Button } from "@/components/ui/button";
+
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   Dialog,
@@ -15,7 +18,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 
 
 import StatsGrid from "../components/StatsGrid";
@@ -34,8 +36,8 @@ import { useUpdateJob } from "@/modules/jobTracker/hooks/useUpdateJob";
 import { useDeleteJob } from "@/modules/jobTracker/hooks/useDeleteJob";
 
 import CreateJobDialog from "../components/CreateJobDialog";
-import JobForm, { initialValues as jobFormInitialValues } from "../components/JobForm";
-import { JobStatusBadge } from "../components/JobStatusBadge";
+import JobForm from "../components/JobForm";
+import { initialValues as jobFormInitialValues } from "../constants/jobFormDefaults";
 
 
 
@@ -49,6 +51,7 @@ function formatNumber(value) {
 
 export default function JobTrackerDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const {
     data: statsData,
@@ -63,8 +66,15 @@ export default function JobTrackerDashboard() {
     isError: isJobsError,
   } = useJobs();
 
-  const [selectedJobId, setSelectedJobId] = useState(null);
-  const [viewOpen, setViewOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState(() => {
+    const viewJob = searchParams.get("viewJob");
+    return viewJob ? Number(viewJob) : null;
+  });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(() => searchParams.has("viewJob"));
+  const [viewTab, setViewTab] = useState(() =>
+    searchParams.get("tab") === "communication" ? "communication" : "details"
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -128,6 +138,8 @@ export default function JobTrackerDashboard() {
       </div>
 
       <CreateJobDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
         trigger={
           <Button type="button" variant="secondary" disabled={isStatsLoading}>
             <Plus className="mr-2 h-4 w-4" />
@@ -216,9 +228,9 @@ export default function JobTrackerDashboard() {
         {isJobsLoading ? (
           <JobTableLoading />
         ) : isJobsError ? (
-          <JobTableEmpty />
+          <JobTableEmpty onCreate={() => setCreateOpen(true)} />
         ) : jobs.length === 0 ? (
-          <JobTableEmpty />
+          <JobTableEmpty onCreate={() => setCreateOpen(true)} />
         ) : (
           <JobTable
             jobs={jobs}
@@ -227,6 +239,7 @@ export default function JobTrackerDashboard() {
             onView={(job) => {
               setSelectedJobId(job?.id);
               setViewOpen(true);
+              setViewTab("details");
               setEditOpen(false);
               setDeleteOpen(false);
             }}
@@ -250,87 +263,43 @@ export default function JobTrackerDashboard() {
         )}
       </div>
 
-      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Job Details</DialogTitle>
-            <DialogDescription>Review the selected job application.</DialogDescription>
-          </DialogHeader>
+      <Dialog open={viewOpen} onOpenChange={(next) => {
+        setViewOpen(next);
+        if (!next) {
+          if (searchParams.has("viewJob")) {
+            setSearchParams({});
+          }
+        }
+      }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+          <DialogTitle className="sr-only">Job Details</DialogTitle>
 
           {isSelectedJobLoading ? (
-            <div className="py-6">Loading...</div>
-          ) : isSelectedJobError ? (
-            <Alert variant="destructive">
-              <AlertTitle>Unable to load job</AlertTitle>
-              <AlertDescription>
-                {selectedJobError?.response?.data?.detail || selectedJobError?.message || "Failed to load job."}
-              </AlertDescription>
-            </Alert>
-          ) : selectedJobData ? (
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Company</div>
-                  <div className="font-medium">{selectedJobData.company || "—"}</div>
-                </div>
-                <JobStatusBadge status={selectedJobData.status} />
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-6 w-24" />
               </div>
-
-              <Separator />
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-6">
-                  <div className="text-muted-foreground">Job Title</div>
-                  <div className="font-medium">{selectedJobData.job_title || "—"}</div>
-                </div>
-                <div className="flex justify-between gap-6">
-                  <div className="text-muted-foreground">Location</div>
-                  <div className="font-medium">{selectedJobData.location || "—"}</div>
-                </div>
-                <div className="flex justify-between gap-6">
-                  <div className="text-muted-foreground">Source</div>
-                  <div className="font-medium">{selectedJobData.source || "—"}</div>
-                </div>
-                <div className="flex justify-between gap-6">
-                  <div className="text-muted-foreground">Job URL</div>
-                  <div className="font-medium break-all">
-                    {selectedJobData.job_url ? (
-                      <a
-                        href={selectedJobData.job_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline"
-                      >
-                        {selectedJobData.job_url}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </div>
-                </div>
-                <div className="flex justify-between gap-6">
-                  <div className="text-muted-foreground">Applied Date</div>
-                  <div className="font-medium">{formatDate(selectedJobData.applied_date)}</div>
-                </div>
-                <div className="flex justify-between gap-6">
-                  <div className="text-muted-foreground">Deadline</div>
-                  <div className="font-medium">{formatDate(selectedJobData.deadline)}</div>
-                </div>
-              </div>
-
-              {selectedJobData.notes ? (
-                <div>
-                  <div className="text-sm text-muted-foreground">Notes</div>
-                  <div className="mt-1 whitespace-pre-wrap text-sm">{selectedJobData.notes}</div>
-                </div>
-              ) : null}
-
-              <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => setViewOpen(false)}>
-                  Close
-                </Button>
-              </DialogFooter>
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-32 w-full" />
             </div>
+          ) : isSelectedJobError ? (
+            <div className="p-6">
+              <Alert variant="destructive">
+                <AlertTitle>Unable to load job</AlertTitle>
+                <AlertDescription>
+                  {selectedJobError?.response?.data?.detail || selectedJobError?.message || "Failed to load job."}
+                </AlertDescription>
+              </Alert>
+            </div>
+          ) : selectedJobData ? (
+            <ApplicationLinkedResources
+              job={selectedJobData}
+              initialTab={viewTab === "communication" ? "communication" : "resume"}
+              onTabChange={setViewTab}
+            />
           ) : null}
         </DialogContent>
       </Dialog>
@@ -368,7 +337,16 @@ export default function JobTrackerDashboard() {
           ) : null}
 
           {isSelectedJobLoading ? (
-            <div className="py-6">Loading...</div>
+            <div className="py-6 space-y-4">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <div className="flex justify-end gap-2 pt-2">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-32" />
+              </div>
+            </div>
           ) : (
             <JobForm
 

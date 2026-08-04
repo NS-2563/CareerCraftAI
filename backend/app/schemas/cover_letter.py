@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List, Any
 
-
 class CoverLetterBase(BaseModel):
     """Base cover letter schema."""
     title: str = Field(default="Untitled Cover Letter")
@@ -11,6 +10,7 @@ class CoverLetterBase(BaseModel):
 class CoverLetterCreate(CoverLetterBase):
     """Schema for creating a new cover letter."""
     resume_id: Optional[int] = None
+    job_application_id: Optional[int] = None
     content: Optional[str] = None
     job_title: Optional[str] = None
     company_name: Optional[str] = None
@@ -23,6 +23,7 @@ class CoverLetterUpdate(BaseModel):
     """Schema for updating an existing cover letter."""
     title: Optional[str] = None
     resume_id: Optional[int] = None
+    job_application_id: Optional[int] = None
     content: Optional[str] = None
     job_title: Optional[str] = None
     company_name: Optional[str] = None
@@ -36,6 +37,7 @@ class CoverLetterResponse(BaseModel):
     id: int
     user_id: int
     resume_id: Optional[int] = None
+    job_application_id: Optional[int] = None
     title: str
     content: Optional[str] = None
     job_title: Optional[str] = None
@@ -45,10 +47,35 @@ class CoverLetterResponse(BaseModel):
     template: str = "modern"
     is_archived: bool = False
     version: int = 1
+    ai_provider: Optional[str] = None
+    model_name: Optional[str] = None
+    generated_at: Optional[datetime] = None
+    ats_coverage: Optional[dict] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "protected_namespaces": (),
+    }
+
+
+class CoverLetterPreflightRequest(BaseModel):
+    """Schema for the deterministic pre-flight generation check.
+
+    Mirrors the inputs the generation endpoint consumes so the client can ask
+    "which required inputs are missing?" before attempting an AI call.
+    """
+    resume_id: Optional[int] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    job_description: Optional[str] = None
+
+
+class CoverLetterPreflightResponse(BaseModel):
+    """Schema for the pre-flight check result."""
+    ready: bool
+    missing: List[str]
 
 
 class CoverLetterDuplicateRequest(BaseModel):

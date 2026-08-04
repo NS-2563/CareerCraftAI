@@ -61,6 +61,29 @@ export async function getJobStats() {
   return data;
 }
 
+/**
+ * Fetch the workspace header payload for an application: the deterministic
+ * recommended next action plus the non-dismissed insight cards.
+ * @param {number|string} jobId
+ */
+export async function getWorkspaceInsights(jobId) {
+  const { data } = await apiClient.get(`${API_BASE}/${jobId}/workspace`);
+  return data;
+}
+
+/**
+ * Dismiss an insight card for an application so it does not reappear.
+ * Returns the updated dismissed-keys list.
+ * @param {number|string} jobId
+ * @param {string} insightKey
+ */
+export async function dismissWorkspaceInsight(jobId, insightKey) {
+  const { data } = await apiClient.post(
+    `${API_BASE}/${jobId}/workspace/insights/${insightKey}/dismiss`
+  );
+  return data;
+}
+
 const jobTrackerApi = {
   getJobs,
   getJob,
@@ -68,6 +91,8 @@ const jobTrackerApi = {
   updateJob,
   deleteJob,
   getJobStats,
+  getWorkspaceInsights,
+  dismissWorkspaceInsight,
 };
 
 export default jobTrackerApi;

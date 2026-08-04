@@ -33,9 +33,15 @@ function normalizeError(error) {
       case 404:
         message = "Resource not found";
         break;
-      case 422:
-        message = error.response.data?.detail || "Validation error";
+      case 422: {
+        const detail = error.response.data?.detail;
+        if (Array.isArray(detail)) {
+          message = detail.map((e) => e.msg).join("; ") || "Validation error";
+        } else {
+          message = detail || "Validation error";
+        }
         break;
+      }
       case 500:
         message = "Server error";
         retryable = true;

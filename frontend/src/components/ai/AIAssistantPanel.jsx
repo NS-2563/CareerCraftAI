@@ -28,9 +28,7 @@ export default function AIAssistantPanel() {
   // (Intentionally removed the previous useEffect-based auto trigger.)
 
 
-  function handleSuggestionClick(suggestion) {
-    console.log("Suggestion clicked:", suggestion.title);
-  }
+  function handleSuggestionClick() {}
 
   return (
     <motion.aside

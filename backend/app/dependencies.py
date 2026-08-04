@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import hashlib
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -80,6 +80,27 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
+def _resolve_user(payload: dict, db: Session) -> Optional[User]:
+    """Resolve a User from a verified JWT payload, or None.
+
+    Returns None when the token has no subject, the user does not exist,
+    or the token version does not match the user's current ``token_version``.
+    """
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        return None
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if user is None:
+        return None
+
+    token_ver = payload.get("ver", 0)
+    if token_ver != user.token_version:
+        return None
+
+    return user
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:
@@ -99,19 +120,17 @@ def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
+    user = _resolve_user(payload, db)
+    if user is not None:
+        return user
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    if user is None:
-        raise credentials_exception
-
-    token_ver = payload.get("ver", 0)
-    if token_ver != user.token_version:
+    # Distinguish a revoked token (subject + user exist, version mismatch)
+    # from outright invalid credentials, matching the pre-refactor behavior.
+    if payload.get("sub") is not None and db.query(User).filter(
+        User.id == int(payload["sub"])
+    ).first() is not None:
         raise token_revoked_exception
-
-    return user
+    raise credentials_exception
 
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
@@ -119,3 +138,27 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def get_optional_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Like get_current_user, but returns None instead of raising on missing/invalid token."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.removeprefix("Bearer ")
+
+    payload = decode_token(token)
+    if payload is None:
+        return None
+
+    user = _resolve_user(payload, db)
+    if user is None:
+        return None
+
+    if not user.is_active:
+        return None
+
+    return user

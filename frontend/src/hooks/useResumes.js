@@ -23,7 +23,7 @@ if (activeFilter === "archived") {
 }
 
 let resumes = await resumeApi.listResumes(archived);
-      console.log(resumes);
+      
 
       if (searchQuery) {
         resumes = resumes.filter((r) =>

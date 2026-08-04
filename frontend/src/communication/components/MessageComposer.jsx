@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Copy, Mail, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,9 @@ export default function MessageComposer({
   onSave,
   isSaving,
   initialJobId,
+  initialInboundMessage,
+  initialRecipientName,
+  initialRecipientCompany,
 }) {
   const { data: jobsData } = useJobs();
   const jobs = Array.isArray(jobsData) ? jobsData : [];
@@ -38,26 +41,59 @@ export default function MessageComposer({
   const isLinkedInNote = messageType === "linkedin_note";
   const isRecruiterReply = messageType === "recruiter_reply";
 
-  const [recipientName, setRecipientName] = useState("");
+  const [recipientName, setRecipientName] = useState(initialRecipientName || "");
   const [recipientRole, setRecipientRole] = useState("");
-  const [recipientCompany, setRecipientCompany] = useState("");
+  const [recipientCompany, setRecipientCompany] = useState(initialRecipientCompany || "");
   const [tone, setTone] = useState("professional");
   const [customContext, setCustomContext] = useState("");
   const [selectedJobId, setSelectedJobId] = useState(initialJobId || null);
 
-  const [inboundMessage, setInboundMessage] = useState("");
+  const [inboundMessage, setInboundMessage] = useState(initialInboundMessage || "");
   const [replyIntent, setReplyIntent] = useState("");
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  useEffect(() => {
+  const [prevInitialJobId, setPrevInitialJobId] = useState(initialJobId);
+
+  if (initialJobId !== prevInitialJobId) {
+    setPrevInitialJobId(initialJobId);
     if (initialJobId) {
       setSelectedJobId(initialJobId);
     }
-  }, [initialJobId]);
+  }
 
-  useEffect(() => {
+  const [prevInitialInbound, setPrevInitialInbound] = useState(initialInboundMessage);
+
+  if (initialInboundMessage !== prevInitialInbound) {
+    setPrevInitialInbound(initialInboundMessage);
+    if (initialInboundMessage) {
+      setInboundMessage(initialInboundMessage);
+    }
+  }
+
+  const [prevInitialRecipient, setPrevInitialRecipient] = useState(initialRecipientName);
+
+  if (initialRecipientName !== prevInitialRecipient) {
+    setPrevInitialRecipient(initialRecipientName);
+    if (initialRecipientName) {
+      setRecipientName(initialRecipientName);
+    }
+  }
+
+  const [prevInitialCompany, setPrevInitialCompany] = useState(initialRecipientCompany);
+
+  if (initialRecipientCompany !== prevInitialCompany) {
+    setPrevInitialCompany(initialRecipientCompany);
+    if (initialRecipientCompany) {
+      setRecipientCompany(initialRecipientCompany);
+    }
+  }
+
+  const [prevJobKey, setPrevJobKey] = useState("");
+
+  if (`${selectedJobId ?? ""}:${jobs.length}` !== prevJobKey) {
+    setPrevJobKey(`${selectedJobId ?? ""}:${jobs.length}`);
     if (selectedJobId) {
       const job = jobs.find((j) => j.id === Number(selectedJobId));
       if (job) {
@@ -65,7 +101,7 @@ export default function MessageComposer({
         if (!recipientRole) setRecipientRole(job.job_title || "");
       }
     }
-  }, [selectedJobId, jobs]);
+  }
 
   const handleGenerate = useCallback(() => {
     const payload = {

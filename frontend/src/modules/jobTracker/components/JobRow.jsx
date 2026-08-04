@@ -2,7 +2,7 @@ import { Eye, Pencil, Trash2, MessageSquare, BellDot } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { JobStatusBadge } from "./JobStatusBadge";
+import { StatusBadge } from "@/components/ui/atoms";
 
 export default function JobRow({
   job,
@@ -26,7 +26,6 @@ export default function JobRow({
       <td className="px-4 py-4 align-top whitespace-nowrap">
         {job.job_title || "—"}
       </td>
-      <td className="px-4 py-4 align-top">{job.status || "—"}</td>
       <td className="px-4 py-4 align-top">{job.location || "—"}</td>
       <td className="px-4 py-4 align-top whitespace-nowrap">
         {formatDate(job.applied_date)}
@@ -73,7 +72,7 @@ export default function JobRow({
         </div>
       </td>
       <td className="px-4 py-4 align-top">
-        <JobStatusBadge status={job.status} />
+        <StatusBadge status={job.status} />
       </td>
     </tr>
   );

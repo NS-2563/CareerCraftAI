@@ -1,3 +1,5 @@
+import { ScoreTooltip } from "@/components/ui/atoms";
+
 export default function CareerSummary({ report }) {
   if (!report) return null;
 
@@ -42,7 +44,9 @@ export default function CareerSummary({ report }) {
             </h3>
 
             <p className="text-muted-foreground">
-              {report.readiness_score}/100
+              <ScoreTooltip description="Weighted blend: 40% your ATS resume score, 30% skill match, 15% for having a Projects section, and 15% for Certifications.">
+                <span className="inline-flex cursor-help">{report.readiness_score}/100</span>
+              </ScoreTooltip>
             </p>
           </div>
 

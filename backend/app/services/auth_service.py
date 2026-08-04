@@ -138,6 +138,26 @@ class AuthService:
         logger.info("LOGOUT user_id=%s new_version=%s", user.id, user.token_version)
 
     @staticmethod
+    def change_password(
+        db: Session,
+        user: User,
+        current_password: str,
+        new_password: str,
+    ) -> None:
+        """Change the user's password and revoke every existing session.
+
+        The token version is incremented so all previously issued tokens
+        (including the current one) are invalidated server-side.
+        """
+        if not verify_password(current_password, user.hashed_password):
+            raise UnauthorizedException("Current password is incorrect")
+
+        user.hashed_password = get_password_hash(new_password)
+        user.token_version += 1
+        db.commit()
+        logger.info("CHANGE_PASSWORD user_id=%s new_version=%s", user.id, user.token_version)
+
+    @staticmethod
     def _create_tokens(user_id: int, token_version: int = 0) -> Token:
         """Create access and refresh tokens."""
         access_token = create_access_token(

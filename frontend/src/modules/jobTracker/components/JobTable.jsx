@@ -23,7 +23,6 @@ export default function JobTable({
               "Deadline",
               "Source",
               "Actions",
-              "Status Badge",
             ].map((h) => (
               <th
                 key={h}

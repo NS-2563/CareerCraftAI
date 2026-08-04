@@ -12,7 +12,6 @@ import ReviewField from "./ReviewField";
 import ReviewSkills from "./ReviewSkills";
 import ReviewArraySection from "./ReviewArraySection";
 
-const SCALAR_SECTIONS = ["personal", "summary"];
 const ARRAY_SECTIONS = [
   "experience", "education", "projects", "certifications",
   "languages", "interests", "references",

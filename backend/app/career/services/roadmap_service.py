@@ -1,5 +1,6 @@
 import logging
 from copy import deepcopy
+from datetime import datetime
 from unittest import result
 
 from app.ai.context_builder import build_context
@@ -111,7 +112,7 @@ def normalize_skills(raw_skills):
     ]
 
 
-def build_fallback_report(data: dict) -> dict:
+def build_fallback_report(data: dict, db=None, user_id: int = None) -> dict:
     """
     Generate deterministic career report
     when AI generation fails.
@@ -166,6 +167,8 @@ def build_fallback_report(data: dict) -> dict:
                 "goal",
                 ""
             ),
+
+            "generated_at": datetime.utcnow().isoformat(),
 
             "readiness_score": readiness[
                 "career_readiness_score"
@@ -240,12 +243,19 @@ def build_fallback_report(data: dict) -> dict:
         }
     )
 
+    if db is not None and user_id is not None:
+        from app.career.services.recommendation_signals import (
+            enrich_priority_recommendations,
+        )
+        report["skill_gap"]["priority"] = enrich_priority_recommendations(
+            report, db, user_id
+        )
 
     return report
 
 
 
-def generate_career_report(data: dict) -> dict:
+def generate_career_report(data: dict, db=None, user_id: int = None) -> dict:
     """
     AI-first career report generator
     with deterministic fallback.
@@ -256,7 +266,9 @@ def generate_career_report(data: dict) -> dict:
 
     context = build_context(
         module="Career Coach",
-        user_data=data
+        user_data=data,
+        db=db,
+        user_id=user_id,
     )
 
     prompt = (
@@ -291,6 +303,30 @@ IMPORTANT:
 - existing_skills MUST contain ONLY the skills explicitly provided by the user.
 - Never infer or add additional existing skills.
 - Do not add HTML, CSS, JavaScript, Git, SQL or any other technology unless explicitly provided.
+
+REAL USER SIGNALS:
+The CONTEXT may include a "Real User Signals" section computed from the user's
+own data (saved JD match results, interview practice sessions, and real
+interview logs). If present, ground your Skill Gap, Learning Roadmap, and
+Action Plan recommendations in these signals:
+
+- "Skill gaps from the user's own saved JD matches" lists skills that are
+  required by jobs the user has actually applied to and are missing from their
+  resume. Prioritize the most frequent of these in missing_skills and roadmap
+  topics.
+- "Weakest interview category" lists the category with the lowest average
+  practice score. Reflect it in roadmap topics and action plan items so the
+  user can strengthen that area.
+- "Real interview logs" list how the user's actual interviews went, with
+  self-rated confidence and notes. A real interview outcome is more
+  informative than practice performance: when both a real interview log and
+  practice scores exist for the same area, weight the real interview signal
+  more heavily in your recommendations.
+
+When these signals are NOT present (e.g. a new user with no saved matches or
+no interview sessions yet), fall back to the resume-based approach using only
+the profile data above. Never invent the signals; only use them when they are
+explicitly listed in the context.
 
 Learning Roadmap:
 Return a list of stages.
@@ -350,7 +386,18 @@ Return only valid JSON.
             skill_gap.setdefault("missing_skills", [])
             skill_gap.setdefault("priority", [])
 
+            if db is not None and user_id is not None:
+                from app.career.services.recommendation_signals import (
+                    enrich_priority_recommendations,
+                )
+                skill_gap["priority"] = enrich_priority_recommendations(
+                    result["data"], db, user_id
+                )
+
             result["data"]["skill_gap"] = skill_gap
+
+            if "generated_at" not in result["data"]:
+                result["data"]["generated_at"] = datetime.utcnow().isoformat()
             return result
 
         logger.warning(
@@ -370,6 +417,6 @@ Return only valid JSON.
 
     return {
         "success": True,
-        "data": build_fallback_report(data),
+        "data": build_fallback_report(data, db=db, user_id=user_id),
         "source": "fallback",
     }

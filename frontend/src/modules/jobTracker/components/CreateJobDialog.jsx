@@ -1,20 +1,21 @@
 import { useMemo, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 
 import { DialogTrigger } from "@/components/ui/dialog";
 import { Alert } from "@/components/ui/alert";
 
-import { initialValues as jobFormInitialValues } from "./JobForm";
+import { initialValues as jobFormInitialValues } from "../constants/jobFormDefaults";
 import JobForm from "./JobForm";
 
 import { useCreateJob } from "../hooks/useCreateJob";
 
 export default function CreateJobDialog({
   trigger = null,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }) {
-  const [open, setOpen] = useState(false);
+  const [openInternal, setOpenInternal] = useState(false);
   const [formApiError, setFormApiError] = useState(null);
 
   const formInitial = useMemo(() => jobFormInitialValues, []);
@@ -34,7 +35,11 @@ export default function CreateJobDialog({
   }
 
   function handleOpenChange(nextOpen) {
-    setOpen(nextOpen);
+    if (onOpenChangeProp) {
+      onOpenChangeProp(nextOpen);
+    } else {
+      setOpenInternal(nextOpen);
+    }
     if (!nextOpen) {
       reset();
     }
@@ -45,7 +50,11 @@ export default function CreateJobDialog({
 
     create(payload, {
       onSuccess: () => {
-        setOpen(false);
+        if (onOpenChangeProp) {
+          onOpenChangeProp(false);
+        } else {
+          setOpenInternal(false);
+        }
         reset();
       },
       onError: (err) => {
@@ -83,6 +92,8 @@ export default function CreateJobDialog({
   if (!trigger) {
     return null;
   }
+
+  const open = openProp !== undefined ? openProp : openInternal;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

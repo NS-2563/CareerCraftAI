@@ -22,6 +22,34 @@ export async function generateMessage(data) {
   return responseData;
 }
 
+export async function logInboundMessage(data) {
+  const { data: responseData } = await apiClient.post(`${API_BASE}/log-inbound`, data);
+  return responseData;
+}
+
+export async function getThread(jobApplicationId) {
+  const { data } = await apiClient.get(`${API_BASE}/thread/${jobApplicationId}`);
+  return data;
+}
+
+export async function getConversationStatus(jobApplicationId) {
+  const { data } = await apiClient.get(`${API_BASE}/conversation-status/${jobApplicationId}`);
+  return data;
+}
+
+export async function setConversationStatus(jobApplicationId, status) {
+  const { data } = await apiClient.put(
+    `${API_BASE}/conversation-status/${jobApplicationId}`,
+    { status: status ?? null }
+  );
+  return data;
+}
+
+export async function getConversationStatuses() {
+  const { data } = await apiClient.get(`${API_BASE}/conversation-statuses`);
+  return data;
+}
+
 export async function updateMessage(id, data) {
   const { data: responseData } = await apiClient.put(`${API_BASE}/${id}`, data);
   return responseData;
@@ -83,6 +111,11 @@ const communicationApi = {
   getMessage,
   createMessage,
   generateMessage,
+  logInboundMessage,
+  getThread,
+  getConversationStatus,
+  setConversationStatus,
+  getConversationStatuses,
   updateMessage,
   deleteMessage,
   duplicateMessage,

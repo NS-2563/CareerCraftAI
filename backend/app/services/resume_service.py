@@ -1,32 +1,13 @@
-from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 from typing import Optional, List
-import json
 
 from app.models.resume import Resume
 from app.schemas.resume import ResumeCreate, ResumeUpdate
-from app.utils.exceptions import NotFoundException, ForbiddenException
-
-
-def _to_json(data) -> str:
-    """Convert dict/list to JSON string."""
-    if data is None:
-        return "[]"
-    try:
-        return json.dumps(data)
-    except:
-        return "[]"
-
-
-def _from_json(text: str) -> dict:
-    """Convert JSON string to dict."""
-    if text:
-        try:
-            return json.loads(text)
-        except:
-            pass
-    return {}
+from app.utils.exceptions import NotFoundException
+from app.utils.json_utils import to_json, from_json
+from app.utils.versioned import create_version_snapshot, get_version_history, record_version, find_version
+from app.activity.service import ActivityService
+from app.activity.constants import EventType
 
 
 def _get_all_fields_json(resume: Resume) -> dict:
@@ -45,16 +26,6 @@ def _get_all_fields_json(resume: Resume) -> dict:
     }
 
 
-def _create_version_snapshot(resume: Resume, note: str = None) -> dict:
-    """Create a version snapshot of the resume."""
-    return {
-        "version": resume.version,
-        "timestamp": datetime.utcnow().isoformat(),
-        "note": note,
-        "data": _get_all_fields_json(resume),
-    }
-
-
 class ResumeService:
     """Service for resume CRUD operations."""
 
@@ -66,20 +37,27 @@ class ResumeService:
             name=resume_data.name,
             completed=getattr(resume_data, "completed", False),
 
-            personal=_to_json(resume_data.personal.model_dump() if resume_data.personal else None),
+            personal=to_json(resume_data.personal.model_dump() if resume_data.personal else None),
             summary=resume_data.summary,
-            experience=_to_json([e.model_dump() for e in resume_data.experience] if resume_data.experience else []),
-            education=_to_json([e.model_dump() for e in resume_data.education] if resume_data.education else []),
-            skills=_to_json([s.model_dump() for s in resume_data.skills] if resume_data.skills else []),
-            projects=_to_json([p.model_dump() for p in resume_data.projects] if resume_data.projects else []),
-            certifications=_to_json([c.model_dump() for c in resume_data.certifications] if resume_data.certifications else []),
-            languages=_to_json([l.model_dump() for l in resume_data.languages] if resume_data.languages else []),
-            interests=_to_json([i.model_dump() for i in resume_data.interests] if resume_data.interests else []),
-            references=_to_json([r.model_dump() for r in resume_data.references] if resume_data.references else []),
+            experience=to_json([e.model_dump() for e in resume_data.experience] if resume_data.experience else []),
+            education=to_json([e.model_dump() for e in resume_data.education] if resume_data.education else []),
+            skills=to_json([s.model_dump() for s in resume_data.skills] if resume_data.skills else []),
+            projects=to_json([p.model_dump() for p in resume_data.projects] if resume_data.projects else []),
+            certifications=to_json([c.model_dump() for c in resume_data.certifications] if resume_data.certifications else []),
+            languages=to_json([l.model_dump() for l in resume_data.languages] if resume_data.languages else []),
+            interests=to_json([i.model_dump() for i in resume_data.interests] if resume_data.interests else []),
+            references=to_json([r.model_dump() for r in resume_data.references] if resume_data.references else []),
         )
         db.add(resume)
         db.commit()
         db.refresh(resume)
+        ActivityService.log_event(
+            db, user_id, EventType.RESUME_CREATED,
+            title="Resume created",
+            description=resume.name,
+            related_entity_type="resume",
+            related_entity_id=resume.id,
+        )
         return resume
 
     @staticmethod
@@ -118,12 +96,8 @@ class ResumeService:
         resume = ResumeService.get_by_id(db, resume_id, user_id)
 
         # Create version snapshot before updating
-
-        snapshot = _create_version_snapshot(resume, "Before update")
-        history = _from_json(resume.version_history) if resume.version_history else []
-        history.append(snapshot)
-        # Keep last 50 versions
-        resume.version_history = _to_json(history[-50:])
+        snapshot = create_version_snapshot(resume, _get_all_fields_json(resume), "Before update")
+        record_version(resume, snapshot)
 
         # Update fields
         update_data = resume_data.model_dump(exclude_unset=True)
@@ -137,29 +111,36 @@ class ResumeService:
 
         # Handle nested objects - convert to JSON strings
         if "personal" in update_data and update_data["personal"]:
-            resume.personal = _to_json(update_data["personal"].model_dump() if hasattr(update_data["personal"], "model_dump") else update_data["personal"])
+            resume.personal = to_json(update_data["personal"].model_dump() if hasattr(update_data["personal"], "model_dump") else update_data["personal"])
         if "experience" in update_data and update_data["experience"] is not None:
-            resume.experience = _to_json([e.model_dump() if hasattr(e, "model_dump") else e for e in update_data["experience"]])
+            resume.experience = to_json([e.model_dump() if hasattr(e, "model_dump") else e for e in update_data["experience"]])
         if "education" in update_data and update_data["education"] is not None:
-            resume.education = _to_json([e.model_dump() if hasattr(e, "model_dump") else e for e in update_data["education"]])
+            resume.education = to_json([e.model_dump() if hasattr(e, "model_dump") else e for e in update_data["education"]])
         if "skills" in update_data and update_data["skills"] is not None:
-            resume.skills = _to_json([s.model_dump() if hasattr(s, "model_dump") else s for s in update_data["skills"]])
+            resume.skills = to_json([s.model_dump() if hasattr(s, "model_dump") else s for s in update_data["skills"]])
         if "projects" in update_data and update_data["projects"] is not None:
-            resume.projects = _to_json([p.model_dump() if hasattr(p, "model_dump") else p for p in update_data["projects"]])
+            resume.projects = to_json([p.model_dump() if hasattr(p, "model_dump") else p for p in update_data["projects"]])
         if "certifications" in update_data and update_data["certifications"] is not None:
-            resume.certifications = _to_json([c.model_dump() if hasattr(c, "model_dump") else c for c in update_data["certifications"]])
+            resume.certifications = to_json([c.model_dump() if hasattr(c, "model_dump") else c for c in update_data["certifications"]])
         if "languages" in update_data and update_data["languages"] is not None:
-            resume.languages = _to_json([l.model_dump() if hasattr(l, "model_dump") else l for l in update_data["languages"]])
+            resume.languages = to_json([l.model_dump() if hasattr(l, "model_dump") else l for l in update_data["languages"]])
         if "interests" in update_data and update_data["interests"] is not None:
-            resume.interests = _to_json([i.model_dump() if hasattr(i, "model_dump") else i for i in update_data["interests"]])
+            resume.interests = to_json([i.model_dump() if hasattr(i, "model_dump") else i for i in update_data["interests"]])
         if "references" in update_data and update_data["references"] is not None:
-            resume.references = _to_json([r.model_dump() if hasattr(r, "model_dump") else r for r in update_data["references"]])
+            resume.references = to_json([r.model_dump() if hasattr(r, "model_dump") else r for r in update_data["references"]])
 
         # Increment version
         resume.version += 1
 
         db.commit()
         db.refresh(resume)
+        ActivityService.log_event(
+            db, user_id, EventType.RESUME_UPDATED,
+            title="Resume updated",
+            description=resume.name or "Untitled resume",
+            related_entity_type="resume",
+            related_entity_id=resume.id,
+        )
         return resume
 
     @staticmethod
@@ -168,6 +149,11 @@ class ResumeService:
         resume = ResumeService.get_by_id(db, resume_id, user_id)
         db.delete(resume)
         db.commit()
+        ActivityService.log_event(
+            db, user_id, EventType.RESUME_DELETED,
+            title="Resume deleted",
+            description=resume.name or "Untitled resume",
+        )
 
     @staticmethod
     def duplicate(db: Session, resume_id: int, user_id: int, new_name: str) -> Resume:
@@ -193,6 +179,13 @@ class ResumeService:
         db.add(new_resume)
         db.commit()
         db.refresh(new_resume)
+        ActivityService.log_event(
+            db, user_id, EventType.RESUME_DUPLICATED,
+            title="Resume duplicated",
+            description=f"{original.name} → {new_resume.name}",
+            related_entity_type="resume",
+            related_entity_id=new_resume.id,
+        )
         return new_resume
 
     @staticmethod
@@ -206,9 +199,9 @@ class ResumeService:
 
     @staticmethod
     def get_version_history(db: Session, resume_id: int, user_id: int) -> List[dict]:
-        """Get version history (placeholder)."""
+        """Get version history."""
         resume = ResumeService.get_by_id(db, resume_id, user_id)
-        return _from_json(resume.version_history) if resume.version_history else []
+        return get_version_history(resume.version_history)
 
     @staticmethod
     def archive(db: Session, resume_id: int, user_id: int) -> Resume:
@@ -301,14 +294,10 @@ class ResumeService:
     def restore_version(db: Session, resume_id: int, user_id: int, version: int) -> Resume:
         """Restore a specific version of the resume."""
         resume = ResumeService.get_by_id(db, resume_id, user_id)
-        history = _from_json(resume.version_history) if resume.version_history else []
+        history = get_version_history(resume.version_history)
 
         # Find the version snapshot
-        target = None
-        for v in history:
-            if v.get("version") == version:
-                target = v
-                break
+        target = find_version(history, version)
 
         if not target:
             raise NotFoundException(f"Version {version}", "not found")
@@ -316,9 +305,8 @@ class ResumeService:
         data = target.get("data", {})
 
         # Create snapshot before restoring
-        snapshot = _create_version_snapshot(resume, f"Before restore to v{version}")
-        history.append(snapshot)
-        resume.version_history = _to_json(history[-50:])
+        snapshot = create_version_snapshot(resume, _get_all_fields_json(resume), f"Before restore to v{version}")
+        record_version(resume, snapshot)
 
         # Restore data
         if "personal" in data:

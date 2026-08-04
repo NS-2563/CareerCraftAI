@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import CoverLetterToolbar from "./CoverLetterToolbar";
 import CoverLetterPreview from "./CoverLetterPreview";
+import CoverLetterChecklist from "./CoverLetterChecklist";
+import CoverLetterMetadata from "./CoverLetterMetadata";
+import CoverLetterDiffView from "./CoverLetterDiffView";
 import {
   listCoverLetters,
   getCoverLetter,
@@ -9,10 +13,14 @@ import {
   deleteCoverLetter,
   duplicateCoverLetter,
   renameCoverLetter,
-  generateCoverLetter,
+  generateCoverLetterForExisting,
   applyEditCoverLetter,
+  getCoverLetterDiff,
+  getAtsCoverage,
 } from "@/services/coverLetterApi";
 import { listResumes } from "@/services/resumeApi";
+import { getJobs } from "@/modules/jobTracker/api/jobTrackerApi";
+import { SuccessBanner } from "@/components/ui/atoms";
 
 const initialCoverLetter = {
   title: "Untitled Cover Letter",
@@ -26,14 +34,22 @@ const initialCoverLetter = {
 };
 
 export default function CoverLetterBuilder() {
+  const [searchParams] = useSearchParams();
+  const paramHandledRef = useRef(false);
+
   const [coverLetters, setCoverLetters] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [coverLetter, setCoverLetter] = useState(initialCoverLetter);
   const [resumes, setResumes] = useState([]);
-  const [versions, setVersions] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [, setVersions] = useState([]);
+
+  // Transparency state
+  const [generateReady, setGenerateReady] = useState(false);
+  const [atsCoverage, setAtsCoverage] = useState(null);
+  const [diffData, setDiffData] = useState(null);
 
   // Loading states
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -41,20 +57,73 @@ export default function CoverLetterBuilder() {
   // Error state
   const [error, setError] = useState(null);
 
+  // Post-AI success banner
+  const [justGenerated, setJustGenerated] = useState(false);
+
   const previewRef = useRef(null);
 
-  // Load cover letters on mount
-  useEffect(() => {
-    loadCoverLetters();
-    loadResumes();
+  const loadVersionHistory = useCallback(async (id) => {
+    try {
+      const result = await getVersionHistory(id, null);
+      return result.success ? result.data || [] : [];
+    } catch {
+      return [];
+    }
   }, []);
 
-  async function loadCoverLetters() {
-    setIsLoading(true);
-    setError(null);
+  const refreshCoverage = useCallback(async (id) => {
+    if (!id) {
+      setAtsCoverage(null);
+      return;
+    }
+    try {
+      const result = await getAtsCoverage(id);
+      setAtsCoverage(result.success ? result.data : null);
+    } catch {
+      setAtsCoverage(null);
+    }
+  }, []);
+
+  const loadDiff = useCallback(async (id, fromVersion, toVersion) => {
+    if (!id || !fromVersion || !toVersion) {
+      setDiffData(null);
+      return;
+    }
+    try {
+      const result = await getCoverLetterDiff(id, fromVersion, toVersion);
+      setDiffData(result.success ? result.data : null);
+    } catch {
+      setDiffData(null);
+    }
+  }, []);
+
+  const selectCoverLetter = useCallback(
+    async (id) => {
+      try {
+        const result = await getCoverLetter(id, null);
+        if (result.success) {
+          setSelectedId(id);
+          setCoverLetter(result.data);
+          // Load version history
+          const versionResult = await loadVersionHistory(id);
+          setVersions(versionResult);
+          refreshCoverage(id);
+          setDiffData(null);
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError(err.message);
+      }
+    },
+    [loadVersionHistory, refreshCoverage]
+  );
+
+  const loadCoverLetters = useCallback(async () => {
     try {
       const result = await listCoverLetters(null, null);
       if (result.success) {
+        setError(null);
         setCoverLetters(result.data || []);
         // Select first if none selected
         if (!selectedId && result.data?.length > 0) {
@@ -63,53 +132,54 @@ export default function CoverLetterBuilder() {
       } else {
         setError(result.error);
       }
-    } catch (err) {
-      setError(err.message);
+    } finally {
+      // errors are handled by the caller's .catch
     }
-    setIsLoading(false);
-  }
+  }, [selectedId, selectCoverLetter]);
 
-  async function loadResumes() {
+  const loadResumes = useCallback(async () => {
     try {
       const result = await listResumes(null, null);
       if (Array.isArray(result)) {
         setResumes(result);
       }
-    } catch (err) {
-      console.error("Failed to load resumes:", err);
+    } finally {
+      // errors handled by the caller's .catch
     }
-  }
+  }, []);
 
-  const selectCoverLetter = async (id) => {
-    setIsLoading(true);
+  const loadJobs = useCallback(async () => {
     try {
-      const result = await getCoverLetter(id, null);
-      if (result.success) {
-        setSelectedId(id);
-        setCoverLetter(result.data);
-        // Load version history
-        const versionResult = await loadVersionHistory(id);
-        setVersions(versionResult);
-      } else {
-        setError(result.error);
+      const data = await getJobs({ sort_by: "created_at", descending: true });
+      setJobs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load jobs:", err);
+    }
+  }, []);
+
+  // Load cover letters on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        await loadCoverLetters();
+      } catch (err) {
+        setError(err.message);
       }
-    } catch (err) {
-      setError(err.message);
-    }
-    setIsLoading(false);
-  };
-
-  const loadVersionHistory = async (id) => {
-    try {
-      const result = await getVersionHistory(id, null);
-      return result.success ? result.data || [] : [];
-    } catch {
-      return [];
-    }
-  };
+      try {
+        await loadResumes();
+      } catch (err) {
+        console.error("Failed to load resumes:", err);
+      }
+      try {
+        await loadJobs();
+      } catch (err) {
+        console.error("Failed to load jobs:", err);
+      }
+    })();
+  }, [loadCoverLetters, loadResumes, loadJobs]);
 
   // Create new cover letter
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     setIsSaving(true);
     try {
       const result = await createCoverLetter(initialCoverLetter, null);
@@ -123,7 +193,22 @@ export default function CoverLetterBuilder() {
       setError(err.message);
     }
     setIsSaving(false);
-  };
+  }, [loadCoverLetters, selectCoverLetter]);
+
+  // Deep-link support: ?id= opens a saved letter, ?create=1 starts a new one
+  useEffect(() => {
+    if (paramHandledRef.current || coverLetters.length === 0) return;
+    paramHandledRef.current = true;
+    const requestedId = Number(searchParams.get("id"));
+    (async () => {
+      if (requestedId) {
+        const target = coverLetters.find((c) => c.id === requestedId);
+        if (target) await selectCoverLetter(requestedId);
+      } else if (searchParams.get("create") === "1" && !selectedId) {
+        await handleCreate();
+      }
+    })();
+  }, [coverLetters, searchParams, selectedId, selectCoverLetter, handleCreate]);
 
   // Save current cover letter
   const handleSave = async () => {
@@ -213,6 +298,8 @@ export default function CoverLetterBuilder() {
 
   // Generate with AI
 const handleGenerate = async () => {
+  if (!generateReady) return;
+
   let id = selectedId;
 
   if (!id) {
@@ -228,10 +315,27 @@ const handleGenerate = async () => {
     setSelectedId(id);
     setCoverLetter(createResult.data);
 
-    await loadCoverLetters();
+    try {
+      await loadCoverLetters();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!coverLetter.job_title?.trim()) {
+    setError("Please enter a job title before generating a cover letter.");
+    setIsGenerating(false);
+    return;
+  }
+  if (!coverLetter.company_name?.trim()) {
+    setError("Please enter a company name before generating a cover letter.");
+    setIsGenerating(false);
+    return;
   }
 
   setIsGenerating(true);
+
+  const previousVersion = coverLetter.version || 1;
 
   try {
     const request = {
@@ -242,20 +346,14 @@ const handleGenerate = async () => {
       tone: coverLetter.tone,
     };
 
-    const result = await generateCoverLetter(request, null);
+    const result = await generateCoverLetterForExisting(id, request, null);
 
     if (result.success) {
-      const updateResult = await updateCoverLetter(
-        id,
-        {
-          ...coverLetter,
-          content: result.data.content,
-        },
-        null
-      );
-
-      if (updateResult.success) {
-        setCoverLetter(updateResult.data);
+      setCoverLetter(result.data);
+      setJustGenerated(true);
+      await refreshCoverage(id);
+      if (previousVersion !== result.data.version) {
+        await loadDiff(id, previousVersion, result.data.version);
       }
     } else {
       setError(result.error);
@@ -272,6 +370,7 @@ const handleGenerate = async () => {
     if (!selectedId || !coverLetter.content) return;
 
     setIsGenerating(true);
+    const previousVersion = coverLetter.version || 1;
     try {
       const request = {
         action,
@@ -283,6 +382,11 @@ const handleGenerate = async () => {
       const result = await applyEditCoverLetter(selectedId, request, null);
       if (result.success) {
         setCoverLetter(result.data);
+        setJustGenerated(true);
+        await refreshCoverage(selectedId);
+        if (previousVersion !== result.data.version) {
+          await loadDiff(selectedId, previousVersion, result.data.version);
+        }
       } else {
         setError(result.error);
       }
@@ -290,6 +394,27 @@ const handleGenerate = async () => {
       setError(err.message);
     }
     setIsGenerating(false);
+  };
+
+  // Link / unlink a job application
+  const handleLinkJobApplication = async (jobId) => {
+    if (!selectedId) return;
+    setIsSaving(true);
+    try {
+      const result = await updateCoverLetter(
+        selectedId,
+        { ...coverLetter, job_application_id: jobId },
+        null
+      );
+      if (result.success) {
+        setCoverLetter(result.data);
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+    setIsSaving(false);
   };
 
   // Template/Tone change
@@ -349,6 +474,7 @@ const handleGenerate = async () => {
         isGenerating={isGenerating}
         isSaving={isSaving}
         isExporting={isExporting}
+        canGenerate={generateReady}
       />
 
       {error && (
@@ -357,18 +483,36 @@ const handleGenerate = async () => {
         </div>
       )}
 
+      {justGenerated && (
+        <SuccessBanner
+          onDismiss={() => setJustGenerated(false)}
+          className="mx-6 mt-4"
+        >
+          Cover letter {coverLetter.title ? `“${coverLetter.title}”` : "draft"} generated from
+          your resume and the job details you provided.
+        </SuccessBanner>
+      )}
+
       {/* Cover Letter List Sidebar */}
       <div className="grid lg:grid-cols-12 gap-4 sm:gap-6 p-4 sm:p-6">
         <aside className="lg:col-span-2 rounded-xl border p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Cover Letters</h2>
-            <button
-              className="w-8 h-8 flex items-center justify-center rounded-md border hover:bg-accent"
-              onClick={handleCreate}
-              title="New Cover Letter"
-            >
-              +
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/cover-letter-library"
+                className="text-xs text-primary hover:underline"
+              >
+                Library
+              </Link>
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded-md border hover:bg-accent"
+                onClick={handleCreate}
+                title="New Cover Letter"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2">
@@ -478,6 +622,15 @@ const handleGenerate = async () => {
               </p>
             </div>
 
+            {/* Missing-info checklist (gates Generate) */}
+            <CoverLetterChecklist
+              resumeId={coverLetter.resume_id}
+              jobTitle={coverLetter.job_title}
+              companyName={coverLetter.company_name}
+              jobDescription={coverLetter.job_description}
+              onReadyChange={setGenerateReady}
+            />
+
             {/* Content Editor */}
             <div>
               <label className="block text-sm font-medium mb-2">Cover Letter Content</label>
@@ -553,6 +706,26 @@ const handleGenerate = async () => {
             content={coverLetter.content}
             personalInfo={coverLetter.personal_info || {}}
           />
+
+          {!generateReady && coverLetter.resume_id && (
+            <p className="mt-4 text-xs text-amber-600 dark:text-amber-400">
+              Generation is disabled until the job title and company name are
+              filled in.
+            </p>
+          )}
+
+          {selectedId && coverLetter.content && (
+            <div className="mt-4 space-y-4">
+              <CoverLetterMetadata
+                coverLetter={coverLetter}
+                resumes={resumes}
+                jobs={jobs}
+                atsCoverage={atsCoverage}
+                onLinkJobApplication={handleLinkJobApplication}
+              />
+              {diffData && <CoverLetterDiffView diff={diffData} />}
+            </div>
+          )}
         </section>
       </div>
     </div>

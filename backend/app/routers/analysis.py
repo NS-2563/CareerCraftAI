@@ -1,6 +1,7 @@
 """Analysis API router with persistence, caching, and version awareness."""
 import logging
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -20,7 +21,10 @@ from app.schemas.resume_analysis import (
     ResumeAnalysisResponse,
     ResumeAnalysisStaleStatus,
 )
-from app.main import limiter
+from app.core.limiter import limiter
+from app.activity.service import ActivityService
+from app.activity.constants import EventType
+from app.analytics.service import AnalyticsService
 from app.services.analysis_persistence_service import (
     acquire_analysis_lock,
     check_cache,
@@ -60,6 +64,46 @@ def _build_analysis_response(result: dict) -> AnalysisResponse:
 
 def _determine_source(enable_ai: bool) -> str:
     return "full" if enable_ai else "deterministic"
+
+
+def _record_score_snapshots(
+    db: Session,
+    user_id: int,
+    resume_id: Optional[int],
+    result: dict,
+    scores: dict,
+    resume_data: Optional[dict] = None,
+) -> None:
+    """Record ATS/resume score snapshots for a successful analysis.
+
+    Skips entirely when the analysis failed (respects ``analysis_failed`` so a
+    fabricated fallback value is never snapshotted). Records ``ats_score`` as the
+    primary metric and ``resume_score`` (resume quality) when both are present,
+    scoped to ``resume_id`` so each resume keeps its own score history. A
+    lightweight copy of the resume content (skills + summary) is captured at
+    snapshot time so score-history diffs compare real content, not guesses.
+    """
+    if result.get("analysis_failed"):
+        return
+
+    content = None
+    if resume_data is not None:
+        from app.analytics.service import extract_resume_content
+        content = extract_resume_content(resume_data)
+
+    ats_score = scores.get("ats_score")
+    if ats_score is not None:
+        AnalyticsService.record_snapshot(
+            db, user_id, "ats_score", float(ats_score), resume_id=resume_id,
+            content=content,
+        )
+
+    quality_score = scores.get("quality_score")
+    if quality_score is not None:
+        AnalyticsService.record_snapshot(
+            db, user_id, "resume_score", float(quality_score), resume_id=resume_id,
+            content=content,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +213,8 @@ def _run_and_persist(resume_id, analysis_req, current_user, db, resume_version, 
         analysis_json=result,
         scores_json=scores,
     )
+
+    _record_score_snapshots(db, current_user.id, resume_id, result, scores, analysis_req.resume)
 
     # Mark older analyses as stale
     mark_stale_analyses(db, resume_id, current_user.id, resume_version)
@@ -297,8 +343,17 @@ def analyze_resume_from_db(
         )
         mark_stale_analyses(db, resume_id, current_user.id, resume_version)
 
+        _record_score_snapshots(db, current_user.id, resume_id, result, scores, resume_data)
+
         result["_cached"] = False
         result["_analysis_id"] = record.id
+        ActivityService.log_event(
+            db, current_user.id, EventType.ANALYSIS_COMPLETED,
+            title="Resume analyzed",
+            description=resume_db.name or "Resume",
+            related_entity_type="resume",
+            related_entity_id=resume_id,
+        )
     finally:
         release_analysis_lock(resume_id)
 
@@ -358,8 +413,17 @@ def re_analyze_resume(
         )
         mark_stale_analyses(db, resume_id, current_user.id, resume_version)
 
+        _record_score_snapshots(db, current_user.id, resume_id, result, scores, resume_data)
+
         result["_cached"] = False
         result["_analysis_id"] = record.id
+        ActivityService.log_event(
+            db, current_user.id, EventType.ANALYSIS_COMPLETED,
+            title="Resume re-analyzed",
+            description=resume_db.name or "Resume",
+            related_entity_type="resume",
+            related_entity_id=resume_id,
+        )
     finally:
         release_analysis_lock(resume_id)
 

@@ -51,6 +51,12 @@ class JobApplication(Base):
         nullable=True,
     )
 
+    # Explicit user override for the conversation status
+    # ("needs_reply" | "waiting" | "closed" | NULL = auto/derived).
+    # Resolved via communication.conversation_status; terminal application
+    # statuses always win over this value (see precedence rule there).
+    conversation_status_override = Column(String(20), nullable=True)
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

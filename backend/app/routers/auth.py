@@ -1,11 +1,12 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_current_active_user
-from app.main import limiter
+from app.dependencies import get_current_active_user, get_optional_current_user, decode_token
+from app.core.limiter import limiter
 from app.models.user import User
 from app.schemas.user import (
     LoginRequest,
@@ -15,9 +16,9 @@ from app.schemas.user import (
     UserResponse,
     GoogleOAuthRequest,
     GoogleOAuthResponse,
+    ChangePasswordRequest,
 )
 from app.services.auth_service import AuthService, GoogleOAuthService
-from app.utils.response import success_response
 from app.utils.exceptions import AppException
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -138,13 +139,77 @@ def refresh_token(
 def logout(
     request: Request,
     response: Response,
-    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
-    """Logout user, invalidate tokens server-side, and clear the cookie."""
-    AuthService.logout(current_user, db)
+    """Logout user, invalidate tokens server-side, and clear the cookie.
+
+    Idempotent — works with or without a valid access token.  If the access
+    token is invalid (expired, revoked, absent) the endpoint falls back to
+    reading the refresh-token cookie to identify the user and invalidate
+    their server-side token version.
+    """
+    if current_user:
+        AuthService.logout(current_user, db)
+    else:
+        refresh_token_value = request.cookies.get("refresh_token")
+        if refresh_token_value:
+            try:
+                payload = decode_token(refresh_token_value)
+                if payload and payload.get("type") == "refresh":
+                    user_id = payload.get("sub")
+                    if user_id:
+                        user = db.query(User).filter(User.id == int(user_id)).first()
+                        if user:
+                            AuthService.logout(user, db)
+            except Exception:
+                pass
+
     _clear_refresh_cookie(response)
     return LogoutResponse(message="Logged out successfully")
+
+
+@router.post("/change-password", response_model=LogoutResponse)
+@limiter.limit(settings.RATE_LIMIT_CHANGE_PASSWORD)
+def change_password(
+    request: Request,
+    credentials: ChangePasswordRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Change the current user's password and invalidate all existing sessions.
+
+    The token version is incremented on success, so every previously issued
+    token (including the one used for this request) becomes invalid. The
+    frontend should clear local session state and prompt the user to log in
+    again rather than treating the response as an error.
+    """
+    AuthService.change_password(
+        db,
+        current_user,
+        credentials.current_password,
+        credentials.new_password,
+    )
+    _clear_refresh_cookie(response)
+    return LogoutResponse(message="Password changed. Please log in again.")
+
+
+@router.post("/logout-all", response_model=LogoutResponse)
+def logout_all(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Log the user out from all devices.
+
+    Increments ``token_version`` using the same mechanism as a regular
+    logout, which invalidates every issued token including the current one.
+    """
+    AuthService.logout(current_user, db)
+    _clear_refresh_cookie(response)
+    return LogoutResponse(message="Logged out of all devices")
 
 
 @router.get("/me", response_model=UserResponse)

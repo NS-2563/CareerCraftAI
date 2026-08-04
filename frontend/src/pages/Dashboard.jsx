@@ -1,257 +1,154 @@
-import { useState, useMemo, useCallback } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import DashboardToolbar from "@/components/dashboard/DashboardToolbar";
-import ResumeGrid from "@/components/dashboard/ResumeGrid";
-import EmptyState from "@/components/dashboard/EmptyState";
-import VersionHistoryModal from "@/components/dashboard/VersionHistoryModal";
-import RenameModal from "@/components/dashboard/RenameModal";
-import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
-import ImportResumeModal from "@/components/dashboard/ImportResumeModal";
-import { getVersions } from "@/services/resumeApi";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { AlertTriangle, RefreshCw, FileText, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/useAuth";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { IconTile } from "@/components/ui/atoms";
 
-import { useResumes } from "@/hooks/useResumes";
-import { useResumeMutations } from "@/hooks/useResumeMutations";
+import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
+import { getGreeting } from "@/features/dashboard/utils/getGreeting";
+import { DashboardHero } from "@/features/dashboard/components/DashboardHero";
+import { DashboardStatsGrid } from "@/features/dashboard/components/DashboardStatsGrid";
+import { DashboardReadinessCard } from "@/features/dashboard/components/DashboardReadinessCard";
+import { DashboardFocusCard, DashboardFocusEmpty } from "@/features/dashboard/components/DashboardFocusCard";
+import { DashboardTodayFocus, DashboardTodayFocusEmpty } from "@/features/dashboard/components/DashboardTodayFocus";
+import { DashboardActivityFeed, DashboardActivityEmpty } from "@/features/dashboard/components/DashboardActivityFeed";
+import { DashboardUpcomingTasks, DashboardUpcomingEmpty } from "@/features/dashboard/components/DashboardUpcomingTasks";
+import { DashboardHealthScore } from "@/features/dashboard/components/DashboardHealthScore";
+import { DashboardMilestones } from "@/features/dashboard/components/DashboardMilestones";
+import { DashboardSkeletons } from "@/features/dashboard/components/DashboardSkeletons";
 
 export default function Dashboard() {
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("updated_at");
-
-  const [showVersionModal, setShowVersionModal] = useState(false);
-  const [selectedResume, setSelectedResume] = useState(null);
-  const [versions, setVersions] = useState([]);
-
-  const [showRenameModal, setShowRenameModal] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
-
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [showImportModal, setShowImportModal] = useState(false);
-
-  const queryClient = useQueryClient();
-
-  const { data: resumes = [], isLoading } = useResumes(searchQuery, sortBy, activeFilter);
-
-  const {
-    duplicate,
-    archive,
-    restore,
-    remove,
-    rename,
-    restoreVersion,
-  } = useResumeMutations();
-
-  const filteredResumes = useMemo(() => {
-    if (!resumes) return [];
-    switch (activeFilter) {
-      case "archived":
-        return resumes.filter((r) => r.is_archived);
-      case "draft":
-        return resumes.filter((r) => !r.completed && !r.is_archived);
-      case "completed":
-        return resumes.filter((r) => r.completed && !r.is_archived);
-      default:
-        return resumes.filter((r) => !r.is_archived);
-    }
-  }, [resumes, activeFilter]);
-
-  const handleDuplicate = (resume) => {
-    if (!duplicate.isPending) {
-      duplicate.mutate({ id: resume.id, name: `${resume.name} (Copy)` });
-    }
-  };
-
-  const handleArchive = (id) => {
-    if (!archive.isPending) archive.mutate(id);
-  };
-  const handleRestore = (id) => {
-    if (!restore.isPending) restore.mutate(id);
-  };
-
-  const handleDelete = (id) => {
-    const resume = resumes.find(r => r.id === id);
-    if (resume) {
-      setDeleteTarget(resume);
-      setShowDeleteModal(true);
-    }
-  };
-
-  const handleConfirmDelete = () => {
-    if (deleteTarget && !remove.isPending) {
-      remove.mutate(deleteTarget.id, {
-        onSettled: () => {
-          setShowDeleteModal(false);
-          setDeleteTarget(null);
-        },
-      });
-    }
-  };
-
-  const mutationStates = {
-    archivePending: archive.isPending,
-    restorePending: restore.isPending,
-    deletePending: remove.isPending,
-  };
-
-  const handleRename = (id) => {
-    if (!rename.isPending) {
-      rename.mutate({ id, name: renameValue });
-      setShowRenameModal(false);
-      setRenameValue("");
-    }
-  };
-
-  const handleRestoreVersion = (versionNum) => {
-    if (!restoreVersion.isPending) {
-      restoreVersion.mutate(
-        { id: selectedResume.id, version: versionNum },
-        { onSuccess: () => setShowVersionModal(false) }
-      );
-    }
-  };
-
-  const openRenameModal = (resume) => {
-    setSelectedResume(resume);
-    setRenameValue(resume.name);
-    setShowRenameModal(true);
-  };
-
-  const handleImportSuccess = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["resumes"] });
-    toast.success("Resume imported successfully");
-  }, [queryClient]);
-
-  const handleViewVersions = async (resume) => {
-    try {
-      setSelectedResume(resume);
-      const data = await getVersions(resume.id);
-      setVersions(Array.isArray(data) ? data : []);
-      setShowVersionModal(true);
-    } catch (err) {
-      console.error("Failed to load version history:", err);
-      setVersions([]);
-    }
-  };
-
-  const formatDate = (d) =>
-    d ? new Date(d).toLocaleDateString() : "N/A";
+  const { user } = useAuth();
+  const { data, isLoading, isError, error, refetch } = useDashboardData();
 
   if (isLoading) {
+    return <DashboardSkeletons />;
+  }
+
+  if (isError) {
     return (
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Skeleton className="h-9 w-full sm:w-80" />
-          <Skeleton className="h-9 w-32" />
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="h-9 w-28" />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="rounded-xl border p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-8 w-8 rounded-md" />
-              </div>
-
-              <div className="flex gap-2">
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="h-5 w-16" />
-              </div>
-
-              <Skeleton className="h-px w-full" />
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-9 w-full" />
+      <div className="mx-auto max-w-7xl p-4 md:p-0">
+        <Card className="border-red-200 p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 size-6 shrink-0 text-red-500" />
+            <div>
+              <h3 className="font-medium text-red-800">Failed to load dashboard</h3>
+              <p className="mt-1 text-sm text-red-600">
+                {error?.message || "Could not load your dashboard data. Please try again."}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3 gap-1">
+                <RefreshCw className="size-4" /> Retry
+              </Button>
             </div>
-          ))}
-        </div>
+          </div>
+        </Card>
       </div>
     );
   }
 
+  if (data?.is_empty) {
+    return <EmptyDashboard user={user} />;
+  }
+
+  const greeting = getGreeting({ user });
+  const hasFocusItems = Object.keys(data?.continueItems ?? {}).length > 0;
+
   return (
-    <div className="space-y-4">
-      <DashboardToolbar
-        activeFilter={activeFilter}
-        handleFilterChange={setActiveFilter}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        onImport={() => setShowImportModal(true)}
-      />
-
-      {filteredResumes.length === 0 ? (
-        <EmptyState
-          showArchived={activeFilter === "archived"}
-          searchQuery={searchQuery}
-          activeFilter={activeFilter}
-          onClearFilters={() => {
-            setSearchQuery("");
-            setActiveFilter("all");
-          }}
-          onImport={() => setShowImportModal(true)}
+    <div className="mx-auto max-w-7xl animate-fade-up space-y-6">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DashboardHero
+          greeting={greeting}
+          recommendedAction={data?.recommendedAction}
+          pendingFollowUps={data?.pendingFollowUps ?? 0}
         />
-      ) : (
-        <ResumeGrid
-          filteredResumes={filteredResumes}
-          formatDate={formatDate}
-          handlers={{
-            handleDuplicate,
-            openRenameModal,
-            handleViewVersions,
-            handleArchive,
-            handleRestore,
-            handleDelete,
-          }}
-          mutationStates={mutationStates}
+        <DashboardReadinessCard
+          readiness={data?.careerReadiness}
+          atsLatest={data?.atsLatest}
         />
-      )}
+      </div>
 
-      <VersionHistoryModal
-        showVersionModal={showVersionModal}
-        versions={versions}
-        handleClose={() => setShowVersionModal(false)}
-        handleRestoreVersion={handleRestoreVersion}
+      <DashboardStatsGrid
+        resume={data?.resume}
+        jobStats={data?.jobStats}
+        interview={data?.interview}
+        careerReadiness={data?.careerReadiness}
+        jobPipeline={data?.jobPipeline}
       />
 
-      <RenameModal
-        showRenameModal={showRenameModal}
-        renameValue={renameValue}
-        setRenameValue={setRenameValue}
-        handleRename={handleRename}
-        selectedResume={selectedResume}
-        handleClose={() => setShowRenameModal(false)}
-      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          {hasFocusItems ? (
+            <DashboardFocusCard items={data?.continueItems} />
+          ) : (
+            <DashboardFocusEmpty />
+          )}
+          {data?.todayFocus ? (
+            <DashboardTodayFocus focus={data?.todayFocus} />
+          ) : (
+            <DashboardTodayFocusEmpty />
+          )}
+          {data?.recentActivity?.length > 0 ? (
+            <DashboardActivityFeed activities={data?.recentActivity} viewAllPath="/activity" />
+          ) : (
+            <DashboardActivityEmpty onCreate={{ label: "Create your first resume", path: "/resume-studio" }} />
+          )}
+        </div>
+        <div className="flex flex-col gap-4">
+          <DashboardHealthScore healthScore={data?.healthScore} />
+          <DashboardMilestones milestones={data?.milestones} />
+          {data?.upcomingTasks?.length > 0 ? (
+            <DashboardUpcomingTasks tasks={data?.upcomingTasks} />
+          ) : (
+            <DashboardUpcomingEmpty onCreate={{ label: "Track a job application", path: "/jobs" }} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      <DeleteConfirmModal
-        open={showDeleteModal}
-        title={deleteTarget ? `Delete "${deleteTarget.name}"` : "Delete Resume"}
-        description={
-          deleteTarget
-            ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone. All version history will be permanently removed.`
-            : "Are you sure you want to delete this resume? This action cannot be undone."
-        }
-        onCancel={() => {
-          setShowDeleteModal(false);
-          setDeleteTarget(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        confirmDisabled={remove.isPending}
-      />
+function EmptyDashboard({ user }) {
+  const navigate = useNavigate();
+  const { greeting, firstName } = getGreeting({ user });
 
-      <ImportResumeModal
-        open={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onSuccess={handleImportSuccess}
-      />
+  return (
+    <div className="mx-auto flex min-h-[80vh] max-w-7xl items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
+        <Card
+          sheen
+          className="relative overflow-hidden p-8 text-center sm:p-12"
+          style={{
+            background:
+              "radial-gradient(130% 120% at 100% 0%, color-mix(in oklch, var(--brand) 20%, transparent), transparent 55%), var(--card)",
+          }}
+        >
+          <div className="mb-6 flex justify-center">
+            <IconTile icon={Sparkles} accent="var(--brand)" size="lg" />
+          </div>
+          <Badge accent="var(--brand)" variant="soft">
+            <Sparkles className="size-3" /> Career OS
+          </Badge>
+          <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            {greeting}
+            {firstName ? `, ${firstName}` : ""}. Let's build your{" "}
+            <span className="text-primary">career story</span>.
+          </h1>
+          <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+            Build your resume, get AI-powered feedback, track applications, and prepare for
+            interviews — all in one intelligent platform.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button size="lg" onClick={() => navigate("/resume-studio")} className="gap-2">
+              <FileText className="size-4" /> Create Your First Resume
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => navigate("/resume")} className="gap-2">
+              <Sparkles className="size-4" /> Explore AI Analysis
+            </Button>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

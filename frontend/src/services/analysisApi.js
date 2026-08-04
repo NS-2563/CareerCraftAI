@@ -79,6 +79,34 @@ export async function getAnalysisHistory(resumeId, limit = 20, signal) {
   }
 }
 
+export async function getScoreHistory(resumeId, metricType = "ats_score", limit = 20, signal) {
+  try {
+    const response = await apiClient.get(
+      `/api/resume/${resumeId}/score-history`,
+      { params: { metric_type: metricType, limit }, signal }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error.name === "CanceledError") throw error;
+    console.error("getScoreHistory API error:", error);
+    return { success: false, error: error.response?.data?.detail || error.message };
+  }
+}
+
+export async function getScoreHistoryDiff(resumeId, fromSnapshotId, toSnapshotId, signal) {
+  try {
+    const response = await apiClient.get(
+      `/api/resume/${resumeId}/score-history/diff`,
+      { params: { from: fromSnapshotId, to: toSnapshotId }, signal }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error.name === "CanceledError") throw error;
+    console.error("getScoreHistoryDiff API error:", error);
+    return { success: false, error: error.response?.data?.detail || error.message };
+  }
+}
+
 export async function reAnalyzeResume(resumeId, enableAi = false, signal) {
   try {
     const response = await apiClient.post(
@@ -94,4 +122,4 @@ export async function reAnalyzeResume(resumeId, enableAi = false, signal) {
   }
 }
 
-export default { analyzeResume, getCachedAnalysis, getStaleStatus, getAnalysisById, getAnalysisHistory, reAnalyzeResume };
+export default { analyzeResume, getCachedAnalysis, getStaleStatus, getAnalysisById, getAnalysisHistory, getScoreHistory, getScoreHistoryDiff, reAnalyzeResume };

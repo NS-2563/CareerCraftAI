@@ -4,40 +4,18 @@ import logging
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from apscheduler.schedulers.background import BackgroundScheduler
-from jose import JWTError, jwt
 
 from app.config import settings
+from app.core.limiter import limiter, _user_or_ip_key
 from app.database import init_db, SessionLocal
 from app.middleware.security import SecurityHeadersMiddleware
 from app.middleware.body_size_limit import RequestBodySizeLimitMiddleware
 from app.utils.exceptions import register_exception_handlers
 from app.utils.response import success_response
 
-def _user_or_ip_key(request) -> str:
-    """Extract user ID from the request's JWT if available, else fall back to IP.
-
-    This allows AI-calling endpoints (which require authentication) to be
-    rate-limited per user rather than per IP, while unauthenticated auth
-    endpoints fall back to IP-based limiting automatically.
-    """
-    try:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:]
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id = payload.get("sub")
-            if user_id is not None:
-                return f"user:{user_id}"
-    except (JWTError, Exception):
-        pass
-    return get_remote_address(request)
-
-
-limiter = Limiter(key_func=_user_or_ip_key)
 logger = logging.getLogger(__name__)
 
 # Import routers
@@ -46,11 +24,16 @@ from app.routers.resume_import import router as resume_import_router
 from app.routers.cover_letter import router as cover_letter_router
 from app.routers.career import router as career_router
 from app.routers.career_history import router as career_history_router
+from app.career.roadmap_router import router as career_roadmap_router
 from app.routers.job_tracker import router as job_tracker_router
 from app.routers.analysis import router as analysis_router
 from app.routers.jd_matching import router as jd_matching_router
 from app.communication.router import router as communication_router
 from app.communication.suggestions_router import router as suggestions_router
+from app.interview_prep.router import router as interview_prep_router
+from app.activity.router import router as activity_router
+from app.analytics.router import router as analytics_router
+from app.dashboard.router import router as dashboard_router
 
 logger.info("AI provider=%s model=%s", settings.AI_PROVIDER, settings.GEMINI_MODEL)
 
@@ -137,11 +120,16 @@ app.include_router(user.router)
 app.include_router(cover_letter_router)
 app.include_router(career_router)
 app.include_router(career_history_router)
+app.include_router(career_roadmap_router)
 app.include_router(job_tracker_router)
 app.include_router(analysis_router)
 app.include_router(jd_matching_router)
 app.include_router(suggestions_router)
 app.include_router(communication_router)
+app.include_router(interview_prep_router)
+app.include_router(activity_router)
+app.include_router(analytics_router)
+app.include_router(dashboard_router)
 
 
 # Health endpoint

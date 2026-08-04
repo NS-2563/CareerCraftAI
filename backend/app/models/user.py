@@ -41,6 +41,7 @@ class User(Base):
     resume_analyses = relationship("ResumeAnalysis", back_populates="user", cascade="all, delete-orphan")
     communication_messages = relationship("CommunicationMessage", back_populates="user", cascade="all, delete-orphan")
     communication_suggestions = relationship("CommunicationSuggestion", back_populates="user", cascade="all, delete-orphan")
+    interview_sessions = relationship("InterviewSession", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("email", name="uix_email"),

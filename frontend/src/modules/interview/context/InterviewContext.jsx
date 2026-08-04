@@ -1,15 +1,19 @@
-import { createContext, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 
+import { evaluateAnswer as evaluateAnswerApi } from "@/modules/interview/services/interviewPrepApi";
+import * as sessionApi from "@/modules/interview/services/interviewSessionApi";
 import { buildEngine } from "@/modules/interview/context/interviewEngine";
 import { PRACTICE_MODE, SESSION_STATUS } from "@/modules/interview/services/constants/interviewConstants";
-
-export const InterviewContext = createContext(null);
+import { InterviewContext } from "./InterviewContext.store";
 
 export function InterviewProvider({ children }) {
   const engine = useMemo(() => buildEngine(), []);
 
   const [currentSession, setCurrentSession] = useState(null);
   const [questionBank, setQuestionBank] = useState([]);
+  const [evaluationsCache] = useState({});
+  const persistIdRef = useRef(null);
+  const sessionRef = useRef(null);
 
   const currentQuestion = useMemo(() => {
     if (!currentSession?.currentQuestionId) return null;
@@ -29,6 +33,10 @@ export function InterviewProvider({ children }) {
       jobRole,
       notes,
 
+      // AI question generation fields
+      jobTitle,
+      skills,
+
       // Backwards-compatible parameters
       mode = interviewType ?? PRACTICE_MODE.PRACTICE,
       filters = {},
@@ -37,6 +45,14 @@ export function InterviewProvider({ children }) {
       const mappedFilters = {
         ...filters,
       };
+
+      // Pass AI-specific fields through to CloudQuestionProvider
+      if (jobTitle) {
+        mappedFilters.job_title = jobTitle;
+      }
+      if (skills?.length) {
+        mappedFilters.skills = skills;
+      }
 
       // interviewMode -> category
       const modeToCategory = {
@@ -85,9 +101,29 @@ export function InterviewProvider({ children }) {
       const { session, selectedQuestions } = result;
 
       setCurrentSession(session);
-
-      // selectedQuestions come from the exact same selection used to build session.questionIds.
       setQuestionBank(selectedQuestions);
+
+      try {
+        const persisted = await sessionApi.createSession({
+          job_title: jobTitle ?? null,
+          skills: skills?.length ? skills : null,
+          difficulty: difficulty ?? null,
+          question_count: questionCount,
+          questions: selectedQuestions.map((q) => ({
+            id: q.id,
+            question: q.prompt ?? q.question ?? "",
+            category: q.category ?? "",
+            topic: q.topic ?? null,
+            difficulty: q.difficulty ?? "",
+          })),
+          related_job_application_id: null,
+        });
+        if (persisted?.id) {
+          persistIdRef.current = persisted.id;
+        }
+      } catch {
+        // Persistence failure is non-fatal; session works in-memory
+      }
 
       return session;
     },
@@ -128,10 +164,10 @@ export function InterviewProvider({ children }) {
 
   const skipCurrentQuestion = useCallback(
     (answerText = "") => {
-      console.log("skipCurrentQuestion called", answerText);
+      
 
       setCurrentSession((s) => {
-        console.log("Session before skip:", s);
+        
 
         if (!s) return s;
 
@@ -154,7 +190,7 @@ export function InterviewProvider({ children }) {
               answeredAt: Date.now(),
             });
 
-        console.log("Session after saveAnswer:", sessionWithAnswer);
+        
 
         return engine.skipQuestion(sessionWithAnswer);
       });
@@ -166,16 +202,90 @@ export function InterviewProvider({ children }) {
     setCurrentSession((s) => (s ? engine.finishSession(s) : s));
   }, [engine]);
 
+  useEffect(() => {
+    sessionRef.current = currentSession;
+  }, [currentSession]);
+
   const generateSummary = useCallback(() => {
     if (!currentSession) return null;
     return engine.generateSummary(currentSession, questionBank);
   }, [engine, currentSession, questionBank]);
+
+  const evaluateAnswer = useCallback(
+    async (questionId, answerText, jobTitle, difficulty) => {
+      if (!questionId || !answerText?.trim()) return;
+
+      try {
+        const result = await evaluateAnswerApi({
+          question: currentQuestion?.prompt ?? "",
+          answer: answerText,
+          job_title: jobTitle ?? null,
+          difficulty: difficulty ?? null,
+        });
+
+        const evaluation = {
+          questionId,
+          ...result.evaluation,
+          evaluation_failed: result.evaluation_failed ?? false,
+        };
+
+        setCurrentSession((s) =>
+          s ? engine.saveEvaluation(s, evaluation) : s
+        );
+      } catch {
+        // Silently fail — evaluation is best-effort
+      }
+    },
+    [engine, currentQuestion]
+  );
+
+  const persistSessionUpdate = useCallback(
+    async (overrides = {}) => {
+      const pid = persistIdRef.current;
+      if (!pid) return;
+
+      const session = sessionRef.current;
+      if (!session) return;
+
+      const answersPayload = session.questionIds.map((qid) => {
+        const answer = session.answers?.find((a) => a.questionId === qid) ?? null;
+        const evaluation = session.evaluations?.find((e) => e.questionId === qid) ?? null;
+        return {
+          questionId: qid,
+          answer: answer?.answer ?? "",
+          skipped: answer?.skipped ?? false,
+          answeredAt: answer?.answeredAt ?? null,
+          evaluation: evaluation
+            ? {
+                score: evaluation.score ?? 0,
+                strengths: evaluation.strengths ?? [],
+                improvements: evaluation.improvements ?? [],
+                model_answer_notes: evaluation.model_answer_notes ?? null,
+                evaluation_failed: evaluation.evaluation_failed ?? false,
+              }
+            : null,
+        };
+      });
+
+      const payload = { answers: answersPayload };
+      if (overrides.overall_score != null) payload.overall_score = overrides.overall_score;
+      if (overrides.completed_at) payload.completed_at = overrides.completed_at;
+
+      try {
+        await sessionApi.updateSession(pid, payload);
+      } catch {
+        // Best-effort
+      }
+    },
+    []
+  );
 
   const value = useMemo(
     () => ({
       currentSession,
       currentQuestion,
       questionBank,
+      evaluationsCache,
       sessionStatus: currentSession?.status ?? SESSION_STATUS.NOT_STARTED,
       navigation: {
         skipQuestion,
@@ -195,12 +305,15 @@ export function InterviewProvider({ children }) {
         finishSession,
         submitAnswer,
         generateSummary,
+        evaluateAnswer,
+        persistSessionUpdate,
       },
     }),
     [
       currentSession,
       currentQuestion,
       questionBank,
+      evaluationsCache,
       skipQuestion,
       skipCurrentQuestion,
       createSession,
@@ -210,6 +323,9 @@ export function InterviewProvider({ children }) {
       finishSession,
       submitAnswer,
       generateSummary,
+      evaluateAnswer,
+      persistSessionUpdate,
+      engine,
     ]
   );
 

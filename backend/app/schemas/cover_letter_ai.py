@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime
 
 
 class GenerateCoverLetterRequest(BaseModel):
@@ -12,8 +13,20 @@ class GenerateCoverLetterRequest(BaseModel):
 
 
 class GenerateCoverLetterResponse(BaseModel):
-    """Schema for cover letter generation response."""
+    """Schema for cover letter generation response.
+
+    ``content`` is the generated letter. ``ai_provider``/``model_name``/
+    ``generated_at`` are the real provider metadata for this generation, and
+    ``ats_coverage`` is the deterministic keyword-coverage count computed from
+    the supplied job description and the generated text.
+    """
     content: str
+    ai_provider: Optional[str] = None
+    model_name: Optional[str] = None
+    generated_at: Optional[datetime] = None
+    ats_coverage: Optional[dict] = None
+
+    model_config = {"protected_namespaces": ()}
 
 
 class AICoverLetterEditRequest(BaseModel):
@@ -27,3 +40,9 @@ class AICoverLetterEditRequest(BaseModel):
 class AICoverLetterEditResponse(BaseModel):
     """Schema for AI cover letter edit response."""
     content: str
+    ai_provider: Optional[str] = None
+    model_name: Optional[str] = None
+    generated_at: Optional[datetime] = None
+    ats_coverage: Optional[dict] = None
+
+    model_config = {"protected_namespaces": ()}

@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { InterviewContext } from "./InterviewContext";
+import { InterviewContext } from "./InterviewContext.store";
 
 export function useInterviewContext() {
   const ctx = useContext(InterviewContext);

@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { AuthProvider } from "./context/AuthContext";
 import { ResumeProvider } from "./context/ResumeContext";
 import App from "./App";
 import BackendStatus from "./components/BackendStatus";
@@ -24,6 +25,7 @@ const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
       <ResumeProvider>
         <BrowserRouter>
           <App />
@@ -36,6 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <BackendStatus />
         </BrowserRouter>
       </ResumeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

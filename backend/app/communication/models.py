@@ -14,6 +14,14 @@ class CommunicationMessage(Base):
     message_type = Column(String(50), nullable=False)
     tone = Column(String(50), default="professional")
 
+    direction = Column(String(10), nullable=False, default="outbound")
+    sender_name = Column(String(255), nullable=True)
+    sender_email = Column(String(255), nullable=True)
+
+    # Provenance: 'ai_generated' when created by the AI /generate endpoint,
+    # 'manual' when created by the manual create or log-inbound path.
+    generation_method = Column(String(20), nullable=False, default="manual")
+
     recipient_name = Column(String(255), nullable=True)
     recipient_role = Column(String(255), nullable=True)
     recipient_company = Column(String(255), nullable=True)

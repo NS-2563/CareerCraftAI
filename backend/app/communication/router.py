@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_active_user
-from app.main import limiter
+from app.core.limiter import limiter
 from app.models.user import User
 from app.models.job_application import JobApplication
 from app.models.resume import Resume
@@ -18,41 +18,20 @@ from app.communication.schemas import (
     CommunicationMessageUpdate,
     CommunicationMessageResponse,
     GenerateMessageRequest,
+    LogInboundMessageRequest,
     RenameRequest,
     DuplicateRequest,
     VersionRestoreRequest,
+    ConversationStatusUpdateRequest,
+    ConversationStatusResponse,
+    ApplicationConversationStatus,
 )
 from app.communication.service import CommunicationService
+from app.communication.thread_summary import attach_thread_summary
 from app.providers.factory import get_provider
 from app.utils.exceptions import NotFoundException
 
 router = APIRouter(prefix="/api/communication", tags=["Communication"])
-
-
-def _parse_ai_response(response: str) -> dict:
-    subject = ""
-    body = response.strip()
-
-    subject_marker = "SUBJECT:"
-    body_marker = "BODY:"
-
-    lines = response.split("\n", 1)
-    first_line = lines[0].strip()
-
-    if first_line.upper().startswith(subject_marker):
-        subject = first_line[len(subject_marker):].strip()
-        body = lines[1].strip() if len(lines) > 1 else ""
-    elif body_marker in response:
-        parts = response.split(body_marker, 1)
-        before = parts[0].strip()
-        if before.upper().startswith(subject_marker):
-            subject = before[len(subject_marker):].strip()
-        body = parts[1].strip() if len(parts) > 1 else response
-    else:
-        subject = ""
-
-    body = body.strip().strip('"').strip("'")
-    return {"subject": subject, "body": body}
 
 
 def _build_resume_summary(resume: Resume) -> str:
@@ -180,6 +159,27 @@ def generate_message(
             resume_summary=resume_summary,
         )
     elif body.message_type == "recruiter_reply":
+        thread_context = None
+        if body.thread_context and body.related_job_application_id is not None:
+            job = db.query(JobApplication).filter(
+                JobApplication.id == body.related_job_application_id,
+                JobApplication.user_id == current_user.id,
+            ).first()
+            if job:
+                recent = CommunicationService.get_recent_thread(
+                    db, current_user.id, body.related_job_application_id, n=5
+                )
+                thread_context = [
+                    {
+                        "direction": m.direction,
+                        "sender_name": m.sender_name or m.recipient_name,
+                        "recipient_name": m.recipient_name,
+                        "subject": m.subject,
+                        "body": m.body,
+                        "created_at": m.created_at,
+                    }
+                    for m in recent
+                ]
         result = provider.generate_recruiter_reply(
             inbound_message=body.inbound_message,
             reply_intent=body.reply_intent,
@@ -187,6 +187,7 @@ def generate_message(
             recipient_company=auto_recipient_company,
             tone=body.tone,
             custom_context=custom_context,
+            thread_context=thread_context,
         )
     else:
         from fastapi import HTTPException
@@ -211,6 +212,93 @@ def generate_message(
     return message
 
 
+@router.post("/log-inbound", response_model=CommunicationMessageResponse, status_code=status.HTTP_201_CREATED)
+def log_inbound_email(
+    body: LogInboundMessageRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Log a manually pasted inbound recruiter email against a job application.
+
+    Ownership-checked: the job application must belong to the current user.
+    """
+    job = db.query(JobApplication).filter(
+        JobApplication.id == body.related_job_application_id,
+        JobApplication.user_id == current_user.id,
+    ).first()
+    if not job:
+        raise NotFoundException("JobApplication", str(body.related_job_application_id))
+
+    message = CommunicationService.log_inbound(
+        db=db,
+        user_id=current_user.id,
+        related_job_application_id=body.related_job_application_id,
+        body=body.body,
+        sender_name=body.sender_name,
+        sender_email=body.sender_email,
+        subject=body.subject,
+        received_at=body.received_at,
+    )
+    return message
+
+
+@router.get("/thread/{job_application_id}", response_model=List[CommunicationMessageResponse])
+def get_thread(
+    job_application_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Return the full conversation thread (both directions) for an application.
+
+    Ownership-checked: the job application must belong to the current user.
+    """
+    job = db.query(JobApplication).filter(
+        JobApplication.id == job_application_id,
+        JobApplication.user_id == current_user.id,
+    ).first()
+    if not job:
+        raise NotFoundException("JobApplication", str(job_application_id))
+
+    messages = CommunicationService.get_thread(db, current_user.id, job_application_id)
+    messages = CommunicationService.attach_conversation_status(db, messages)
+    return attach_thread_summary(db, messages)
+
+
+@router.get("/conversation-status/{job_application_id}", response_model=ConversationStatusResponse)
+def get_conversation_status(
+    job_application_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Resolved conversation status for one application (Needs Reply/Waiting/Closed).
+
+    Ownership-checked; 404 for another user's application.
+    """
+    return CommunicationService.get_conversation_status(db, current_user.id, job_application_id)
+
+
+@router.put("/conversation-status/{job_application_id}", response_model=ConversationStatusResponse)
+def set_conversation_status(
+    job_application_id: int,
+    body: ConversationStatusUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Set or clear the manual conversation-status override for an application."""
+    return CommunicationService.set_conversation_status(
+        db, current_user.id, job_application_id, body.status
+    )
+
+
+@router.get("/conversation-statuses", response_model=List[ApplicationConversationStatus])
+def list_conversation_statuses(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Cross-application conversation statuses (Communication Hub needs-attention view)."""
+    return CommunicationService.get_all_conversation_statuses(db, current_user.id)
+
+
 @router.post("", response_model=CommunicationMessageResponse, status_code=status.HTTP_201_CREATED)
 def create_message(
     message_data: CommunicationMessageCreate,
@@ -223,7 +311,7 @@ def create_message(
 
 @router.get("", response_model=List[CommunicationMessageResponse])
 def list_messages(
-    message_type: Optional[str] = Query(None, pattern=r"^(cold_email|follow_up|thank_you|linkedin_note|referral_request|recruiter_reply)$"),
+    message_type: Optional[str] = Query(None, pattern=r"^(cold_email|follow_up|thank_you|linkedin_note|referral_request|recruiter_reply|recruiter_email)$"),
     archived: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -231,7 +319,8 @@ def list_messages(
     db: Session = Depends(get_db),
 ):
     messages = CommunicationService.get_all(db, current_user.id, message_type, archived, skip, limit)
-    return messages
+    messages = CommunicationService.attach_conversation_status(db, messages)
+    return attach_thread_summary(db, messages)
 
 
 @router.get("/{message_id}", response_model=CommunicationMessageResponse)

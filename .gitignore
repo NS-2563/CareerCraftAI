@@ -18,5 +18,49 @@ node_modules/
 # Uploaded files (runtime only)
 backend/uploads/
 
-# SQLite database (runtime only)
+# SQLite database + journal files (runtime only)
 backend/careercraft.db
+backend/careercraft.db-shm
+backend/careercraft.db-wal
+
+# Local developer tool configs (machine-specific)
+.claude/settings.local.json
+.continue/
+.vscode/
+
+# Generated lint / structure reports (dev only)
+eslint-output.json
+frontend/eslint-output.json
+**/lint-report*.txt
+frontend-structure.txt
+project-structure.txt
+frontend/src/structure.txt
+frontend/src/modules/interview/src-structure.txt
+
+# UI reference sandbox (not shipped)
+ui-reference/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python caches
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+*.egg-info/
+.Python
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage
+.coverage
+
+# Allow templates
+!**/.env.example

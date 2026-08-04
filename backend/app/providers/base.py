@@ -235,6 +235,7 @@ class AIProvider(ABC):
         recipient_company: Optional[str] = None,
         tone: str = "professional",
         custom_context: Optional[str] = None,
+        thread_context: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, str]:
         """Generate a reply to an inbound recruiter message.
 
@@ -246,6 +247,9 @@ class AIProvider(ABC):
             recipient_company: Company name (optional)
             tone: Tone (professional, friendly, executive, creative)
             custom_context: Additional context from the user
+            thread_context: Optional prior messages from the application's thread
+                            (list of dicts with direction/sender/body/etc.) to give
+                            the reply full conversational context.
 
         Returns:
             Dict with 'subject' and 'body' keys
@@ -274,5 +278,54 @@ class AIProvider(ABC):
 
         Returns:
             Dict with 'subject' and 'body' keys
+        """
+        pass
+
+    @abstractmethod
+    def generate_answer_evaluation(
+        self,
+        question: str,
+        answer: str,
+        job_title: Optional[str] = None,
+        difficulty: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Evaluate an interview answer.
+
+        Args:
+            question: The interview question
+            answer: The candidate's answer
+            job_title: Optional job title for context
+            difficulty: Optional difficulty level
+
+        Returns:
+            Dict with either an "evaluation" key (containing score, strengths,
+            improvements, model_answer_notes) or an "evaluation_failed" key (true)
+        """
+        pass
+
+    @abstractmethod
+    def generate_interview_questions(
+        self,
+        job_title: str,
+        job_role: Optional[str] = None,
+        skills: Optional[List[str]] = None,
+        difficulty: str = "medium",
+        question_count: int = 5,
+        company: Optional[str] = None,
+        job_description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Generate realistic interview questions for a given role/skills.
+
+        Args:
+            job_title: The target job title
+            job_role: Optional broader role category
+            skills: List of relevant skills
+            difficulty: "easy", "medium", or "hard"
+            question_count: Number of questions to generate (1-20)
+            company: Optional company name for context
+            job_description: Optional job description text for context
+
+        Returns:
+            Dict with a "questions" key containing a list of question dicts
         """
         pass

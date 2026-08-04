@@ -2,11 +2,12 @@ import { apiClient, setAuthToken, clearAuthToken } from "@/lib/api";
 
 let currentUser = null;
 let accessToken = null;
+let _refreshPromise = null;
 
 export const authService = {
   async login(email, password) {
     const response = await apiClient.post("/api/auth/login", { email, password });
-    const { access_token, token_type } = response.data;
+    const { access_token } = response.data;
 
     accessToken = access_token;
     setAuthToken(access_token);
@@ -34,18 +35,28 @@ export const authService = {
   },
 
   async refreshToken() {
-    try {
-      const response = await apiClient.post("/api/auth/refresh");
-      const { access_token } = response.data;
-
-      accessToken = access_token;
-      setAuthToken(access_token);
-
-      return response.data;
-    } catch (error) {
-      await this.logout();
-      throw error;
+    if (_refreshPromise) {
+      return _refreshPromise;
     }
+
+    _refreshPromise = (async () => {
+      try {
+        const response = await apiClient.post("/api/auth/refresh");
+        const { access_token } = response.data;
+
+        accessToken = access_token;
+        setAuthToken(access_token);
+
+        return response.data;
+      } catch (error) {
+        await this.logout();
+        throw error;
+      } finally {
+        _refreshPromise = null;
+      }
+    })();
+
+    return _refreshPromise;
   },
 
   async getCurrentUser() {

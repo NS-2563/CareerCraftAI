@@ -73,10 +73,8 @@ class GeminiProvider(AIProvider):
         Uses google-genai SDK call patterns compatible with v0.5.0.
         """
         last_error: Optional[Exception] = None
-        logger.info(f"[DIAG] _generate_content starting: model={self.model_name!r}, max_retries={max_retries}")
 
         for attempt in range(max_retries + 1):
-            logger.info(f"[DIAG] _generate_content attempt {attempt + 1}/{max_retries + 1}")
             try:
                 response = self.client.models.generate_content(
                     model=self.model_name,
@@ -89,19 +87,15 @@ class GeminiProvider(AIProvider):
 
                 last_error = ValueError("Empty response from Gemini API")
             except TooManyRequests as e:
-                logger.warning(f"[DIAG] TooManyRequests (attempt {attempt + 1}/{max_retries + 1}): {e}")
                 last_error = e
                 if attempt < max_retries:
-                    logger.info(f"[DIAG] Retrying after 429 (backoff {2 ** attempt}s)")
                     time.sleep(2 ** attempt)  # Exponential backoff
             except GoogleAPICallError as e:
                 status_code = getattr(e, "status_code", None)
-                logger.error(f"[DIAG] GoogleAPICallError (attempt {attempt + 1}/{max_retries + 1}): status_code={status_code}, model={self.model_name!r}, error={e}")
 
                 # Resource exhausted/quota exceeded
                 if status_code == 429 or "RESOURCE_EXHAUSTED" in str(e).upper():
                     if attempt < max_retries:
-                        logger.info(f"[DIAG] Retrying after 429 (backoff {2 ** attempt}s)")
                         time.sleep(2 ** attempt)
                         last_error = e
                         continue
@@ -119,10 +113,8 @@ class GeminiProvider(AIProvider):
                 raise
             except ClientError as e:
                 status_code = getattr(e, "status_code", None)
-                logger.error(f"[DIAG] ClientError (attempt {attempt + 1}/{max_retries + 1}): status_code={status_code}, model={self.model_name!r}, error={e}")
                 if status_code == 429 or "RESOURCE_EXHAUSTED" in str(e).upper():
                     if attempt < max_retries:
-                        logger.info(f"[DIAG] Retrying after 429 (backoff {2 ** attempt}s)")
                         time.sleep(2 ** attempt)
                         last_error = e
                         continue
@@ -141,9 +133,7 @@ class GeminiProvider(AIProvider):
 
 
         if last_error:
-            logger.error(f"[DIAG] _generate_content exhausted all retries, raising: {type(last_error).__name__}: {last_error}")
             raise last_error
-        logger.warning("[DIAG] _generate_content returned empty string (no error, no content)")
         return ""
 
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
@@ -491,6 +481,7 @@ Keep it concise (250-400 words) and ATS-friendly. Use standard business letter f
         recipient_company: Optional[str] = None,
         tone: str = "professional",
         custom_context: Optional[str] = None,
+        thread_context: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, str]:
         from app.prompts.communication import recruiter_reply_prompt
 
@@ -501,6 +492,7 @@ Keep it concise (250-400 words) and ATS-friendly. Use standard business letter f
             recipient_name=recipient_name,
             recipient_company=recipient_company,
             custom_context=custom_context,
+            thread_context=thread_context,
         )
         response = self._generate_content(prompt)
         return self._parse_subject_body_response(response)
@@ -526,3 +518,58 @@ Keep it concise (250-400 words) and ATS-friendly. Use standard business letter f
         )
         response = self._generate_content(prompt)
         return self._parse_subject_body_response(response)
+
+    def generate_answer_evaluation(
+        self,
+        question: str,
+        answer: str,
+        job_title: Optional[str] = None,
+        difficulty: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        from app.prompts.interview_prep import evaluate_interview_answer_prompt
+
+        prompt = evaluate_interview_answer_prompt(
+            question=question,
+            answer=answer,
+            job_title=job_title,
+            difficulty=difficulty,
+        )
+        response = self._generate_content(prompt)
+        result = self._parse_json_response(response)
+
+        if result.get("evaluation_failed"):
+            return {"evaluation_failed": True}
+
+        evaluation = result.get("evaluation")
+        if not evaluation or not isinstance(evaluation, dict):
+            return {"evaluation_failed": True}
+
+        score = evaluation.get("score")
+        if not isinstance(score, (int, float)) or score < 0 or score > 100:
+            return {"evaluation_failed": True}
+
+        return {"evaluation": evaluation}
+
+    def generate_interview_questions(
+        self,
+        job_title: str,
+        job_role: Optional[str] = None,
+        skills: Optional[List[str]] = None,
+        difficulty: str = "medium",
+        question_count: int = 5,
+        company: Optional[str] = None,
+        job_description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        from app.prompts.interview_prep import generate_questions_prompt
+
+        prompt = generate_questions_prompt(
+            job_title=job_title,
+            skills=skills,
+            difficulty=difficulty,
+            question_count=question_count,
+            company=company,
+            job_description=job_description,
+            job_role=job_role,
+        )
+        response = self._generate_content(prompt)
+        return self._parse_json_response(response)

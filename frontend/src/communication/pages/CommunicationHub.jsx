@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Plus,
   Mail,
@@ -9,10 +9,14 @@ import {
   UserPlus,
   Copy,
   Archive,
-  Trash2,
   EllipsisVertical,
-  Loader2,
   FileText,
+  MessagesSquare,
+  Reply,
+  Sparkles,
+  AlertTriangle,
+  AlertCircle,
+  Hourglass,
 } from "lucide-react";
 
 import {
@@ -43,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { StatusBadge, Skeleton } from "@/components/ui/atoms";
 
 import MessageTypeSelector from "../components/MessageTypeSelector";
 import MessageComposer from "../components/MessageComposer";
@@ -59,6 +64,7 @@ import {
 } from "../services/communicationApi";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { formatTimeAgo } from "@/utils/dates";
 
 const TYPE_META = {
   cold_email: { label: "Cold Email", icon: Mail, color: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -66,6 +72,8 @@ const TYPE_META = {
   thank_you: { label: "Thank-You", icon: Heart, color: "bg-green-50 text-green-700 border-green-200" },
   linkedin_note: { label: "LinkedIn Note", icon: MessageSquare, color: "bg-sky-50 text-sky-700 border-sky-200" },
   referral_request: { label: "Referral Request", icon: UserPlus, color: "bg-purple-50 text-purple-700 border-purple-200" },
+  recruiter_reply: { label: "Recruiter Reply", icon: Reply, color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  recruiter_email: { label: "Recruiter Email", icon: Mail, color: "bg-teal-50 text-teal-700 border-teal-200" },
 };
 
 const FILTER_OPTIONS = [
@@ -75,7 +83,19 @@ const FILTER_OPTIONS = [
   { value: "thank_you", label: "Thank-You" },
   { value: "linkedin_note", label: "LinkedIn" },
   { value: "referral_request", label: "Referral" },
+  { value: "recruiter_reply", label: "Recruiter Reply" },
+  { value: "recruiter_email", label: "Recruiter Email" },
 ];
+
+const CONVERSATION_FILTER_OPTIONS = [
+  { value: null, label: "All conversations" },
+  { value: "needs_reply", label: "Needs Reply" },
+  { value: "waiting", label: "Waiting" },
+  { value: "closed", label: "Closed" },
+];
+
+// Rank for "Needs attention first" sort: conversations that need action float up.
+const ATTENTION_RANK = { needs_reply: 0, waiting: 1, closed: 2 };
 
 function formatDate(d) {
   if (!d) return "";
@@ -90,9 +110,63 @@ function formatDate(d) {
   }
 }
 
+function AiBadge() {
+  return (
+    <Badge variant="soft" accent="#8b5cf6" className="text-[10px]">
+      <Sparkles className="mr-1 h-3 w-3" />
+      AI
+    </Badge>
+  );
+}
+
+/**
+ * Compact per-application thread-summary chips for the hub card. Renders the
+ * deterministic summary computed by the backend — never a client-invented value.
+ */
+function ThreadSummaryChips({ summary }) {
+  if (!summary?.has_thread) return null;
+  const state = summary.state;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {summary.last_reply?.created_at ? (
+        <Badge variant="outline" className="text-[10px]">
+          <Reply className="mr-1 h-3 w-3" />
+          Last reply {formatTimeAgo(summary.last_reply.created_at)}
+        </Badge>
+      ) : null}
+      {summary.last_recruiter_email?.created_at ? (
+        <Badge variant="outline" className="text-[10px]">
+          <Mail className="mr-1 h-3 w-3" />
+          Recruiter {formatTimeAgo(summary.last_recruiter_email.created_at)}
+        </Badge>
+      ) : null}
+      {state === "response_overdue" ? (
+        <Badge variant="soft" accent="#ef4444" className="text-[10px]">
+          <AlertTriangle className="mr-1 h-3 w-3" />
+          Response overdue
+          {summary.response_overdue_days != null ? ` · ${summary.response_overdue_days}d` : ""}
+        </Badge>
+      ) : null}
+      {state === "needs_reply" ? (
+        <Badge variant="soft" accent="#f59e0b" className="text-[10px]">
+          <AlertCircle className="mr-1 h-3 w-3" />
+          Needs your reply
+        </Badge>
+      ) : null}
+      {state === "waiting" ? (
+        <Badge variant="soft" accent="#0ea5e9" className="text-[10px]">
+          <Hourglass className="mr-1 h-3 w-3" />
+          Waiting for response
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
 function MessageCard({ message, onAction }) {
   const meta = TYPE_META[message.message_type] || TYPE_META.cold_email;
   const Icon = meta.icon;
+  const navigate = useNavigate();
 
   const handleCopy = () => {
     const text = message.subject
@@ -122,6 +196,16 @@ function MessageCard({ message, onAction }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
+                {message.related_job_application_id ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      navigate(`/jobs?viewJob=${message.related_job_application_id}&tab=communication`)
+                    }
+                  >
+                    <MessagesSquare className="mr-2 h-4 w-4" />
+                    View Thread
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={() => onAction("duplicate", message)}>
                   Duplicate
                 </DropdownMenuItem>
@@ -160,6 +244,12 @@ function MessageCard({ message, onAction }) {
           <Badge variant="secondary" className="text-xs">
             v{message.version}
           </Badge>
+          {message.conversation_status ? (
+            <StatusBadge status={message.conversation_status} />
+          ) : null}
+          {message.direction !== "inbound" && message.generation_method === "ai_generated" ? (
+            <AiBadge />
+          ) : null}
         </CardDescription>
       </CardHeader>
 
@@ -174,6 +264,9 @@ function MessageCard({ message, onAction }) {
         <div className="line-clamp-3 text-sm text-muted-foreground">
           {message.body}
         </div>
+        {message.thread_summary?.has_thread ? (
+          <ThreadSummaryChips summary={message.thread_summary} />
+        ) : null}
       </CardContent>
 
       <CardFooter className="flex items-center justify-between">
@@ -323,6 +416,8 @@ export default function CommunicationHub() {
   const [newDialogOpen, setNewDialogOpen] = useState(!!initialJobId);
   const [filterType, setFilterType] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [convFilter, setConvFilter] = useState(null);
+  const [sortAttention, setSortAttention] = useState(false);
   const queryClient = useQueryClient();
 
   const params = {};
@@ -376,7 +471,7 @@ export default function CommunicationHub() {
         await renameMessage(renameTarget.id, { title: renameValue.trim() });
         queryClient.invalidateQueries({ queryKey: ["communicationMessages"] });
         setRenameTarget(null);
-      } catch (e) {
+      } catch {
         // handled by error state
       }
     }
@@ -392,6 +487,21 @@ export default function CommunicationHub() {
   };
 
   const messageList = Array.isArray(messages) ? messages : [];
+
+  let visibleMessages = messageList;
+  if (convFilter) {
+    visibleMessages = visibleMessages.filter(
+      (m) => m.conversation_status === convFilter
+    );
+  }
+  if (sortAttention) {
+    visibleMessages = [...visibleMessages].sort((a, b) => {
+      const rankA = ATTENTION_RANK[a.conversation_status] ?? 3;
+      const rankB = ATTENTION_RANK[b.conversation_status] ?? 3;
+      if (rankA !== rankB) return rankA - rankB;
+      return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
+    });
+  }
 
   const Header = (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -435,13 +545,58 @@ export default function CommunicationHub() {
     </div>
   );
 
+  const ConversationFilters = (
+    <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+      <span className="text-xs font-medium text-muted-foreground">Conversation:</span>
+      <div className="flex flex-wrap items-center gap-1">
+        {CONVERSATION_FILTER_OPTIONS.map((opt) => (
+          <Button
+            key={opt.value ?? "all-conv"}
+            variant={convFilter === opt.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setConvFilter(opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+      <div className="ml-auto">
+        <Button
+          variant={sortAttention ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSortAttention((p) => !p)}
+        >
+          <MessagesSquare className="mr-1 h-4 w-4" />
+          Needs attention first
+        </Button>
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-4">
         {Header}
         {Filters}
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        {ConversationFilters}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Skeleton circle className="size-8" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <Skeleton className="mt-3 h-4 w-full" />
+              <Skeleton className="mt-2 h-4 w-3/4" />
+              <div className="mt-4 flex items-center justify-between">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-6 w-6" />
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
     );
@@ -452,6 +607,7 @@ export default function CommunicationHub() {
       <div className="space-y-4">
         {Header}
         {Filters}
+        {ConversationFilters}
         <Alert variant="destructive">
           <AlertTitle>Failed to load messages</AlertTitle>
           <AlertDescription>
@@ -466,15 +622,22 @@ export default function CommunicationHub() {
     <div className="space-y-4">
       {Header}
       {Filters}
+      {ConversationFilters}
 
-      {messageList.length === 0 ? (
+      {visibleMessages.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
           <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
           <h2 className="text-xl font-semibold">
-            {showArchived ? "No archived messages" : "No messages yet"}
+            {convFilter
+              ? `No conversations ${convFilter.replace("_", " ")}`
+              : showArchived
+              ? "No archived messages"
+              : "No messages yet"}
           </h2>
           <p className="mt-2 text-muted-foreground max-w-md">
-            {showArchived
+            {convFilter
+              ? "Try a different conversation filter, or create a new message."
+              : showArchived
               ? "Archive messages to see them here."
               : "Create your first cold email, follow-up, or LinkedIn note."}
           </p>
@@ -487,7 +650,7 @@ export default function CommunicationHub() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {messageList.map((msg) => (
+          {visibleMessages.map((msg) => (
             <MessageCard
               key={msg.id}
               message={msg}

@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/useAuth";
 import InputField from "@/components/common/InputField";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Mail, Lock, AlertCircle, ArrowRight } from "lucide-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -33,64 +37,58 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Sign in to your account
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Or{" "}
-              <Link
-                to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                create a new account
-              </Link>
-            </p>
-          </div>
+    <AuthLayout>
+      <h1 className="font-display text-3xl font-semibold tracking-tight">Welcome back</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Sign in to pick up where you left off.
+      </p>
 
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {(localError || error) && (
-              <div className="rounded-md bg-red-50 p-4">
-                <p className="text-sm text-red-600">{localError || error}</p>
-              </div>
-            )}
+      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        {(localError || error) && (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{localError || error}</AlertDescription>
+          </Alert>
+        )}
 
-            <div className="space-y-4">
-              <InputField
-                label="Email address"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="you@example.com"
-                required
-              />
+        <InputField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@example.com"
+          required
+          autoComplete="email"
+          icon={Mail}
+          inputClassName="rounded-xl bg-card/60 h-11"
+        />
 
-              <InputField
-                label="Password"
-                type="password"
-                value={password}
-                onChange={setPassword}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
+        <InputField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          placeholder="Enter your password"
+          required
+          autoComplete="current-password"
+          icon={Lock}
+          inputClassName="rounded-xl bg-card/60 h-11"
+        />
 
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isLoading ? "Signing in..." : "Sign in"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
+        <Button type="submit" variant="brand" size="lg" className="mt-2 w-full" disabled={isLoading}>
+          {isLoading ? "Signing in..." : "Sign in"}
+          {!isLoading && <ArrowRight className="size-4" />}
+        </Button>
+      </form>
+
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        New to CareerCraft?{" "}
+        <Link to="/register" className="font-medium text-[var(--emerald)] hover:underline">
+          Create one
+        </Link>
+      </p>
+    </AuthLayout>
+  );
 }
 
 export default LoginPage;
-

@@ -5,7 +5,7 @@ from typing import List
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_active_user
-from app.main import limiter
+from app.core.limiter import limiter
 from app.models.user import User
 from app.models.job_application import JobApplication
 from app.communication.service import CommunicationService

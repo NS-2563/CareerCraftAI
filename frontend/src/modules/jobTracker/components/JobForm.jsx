@@ -8,19 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { JobStatus } from "../constants/jobStatus";
+import { initialValues } from "../constants/jobFormDefaults";
 
-
-const initialValues = {
-  company: "",
-  job_title: "",
-  status: JobStatus.WISHLIST,
-  location: "",
-  source: "",
-  job_url: "",
-  notes: "",
-  applied_date: "",
-  deadline: "",
-};
 
 function isValidUrl(url) {
   if (!url) return true;
@@ -288,8 +277,6 @@ export default function JobForm({
     </form>
   );
 }
-
-export { initialValues as initialValues };
 
 
 

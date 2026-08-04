@@ -1,4 +1,5 @@
 import CareerSummary from "./CareerSummary";
+import CareerProgressTimeline from "./CareerProgressTimeline";
 import CareerPaths from "./CareerPaths";
 import SkillGap from "./SkillGap";
 import LearningRoadmap from "./LearningRoadmap";
@@ -11,6 +12,8 @@ export default function CareerDashboard({ report }) {
   return (
     <div className="space-y-8">
       <CareerSummary report={report} />
+
+      <CareerProgressTimeline />
 
       <CareerPaths
         paths={report.career_paths}

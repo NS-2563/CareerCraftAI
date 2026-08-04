@@ -13,14 +13,25 @@ class CoverLetter(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     resume_id = Column(Integer, ForeignKey("resumes.id", ondelete="CASCADE"), nullable=True)
+    job_application_id = Column(
+        Integer,
+        ForeignKey("job_applications.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    # Cover letter content
+    # Content
     title = Column(String(255), default="Untitled Cover Letter")
     content = Column(Text)
     job_title = Column(String(255))
     company_name = Column(String(255))
     job_description = Column(Text)
     tone = Column(String(50), default="professional")
+
+    # Generation metadata (set server-side at AI generation time only)
+    ai_provider = Column(String(50), nullable=True)
+    model_name = Column(String(100), nullable=True)
+    generated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Template
     template = Column(String(50), default="modern")
@@ -39,6 +50,7 @@ class CoverLetter(Base):
     # Relationships
     user = relationship("User", back_populates="cover_letters")
     resume = relationship("Resume", back_populates="cover_letters")
+    job_application = relationship("JobApplication")
 
     def _load_json(self, field):
         """Load JSON field."""

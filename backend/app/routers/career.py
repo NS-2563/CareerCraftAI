@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_active_user
-from app.main import limiter
+from app.core.limiter import limiter
 
 from app.models.user import User
 from app.schemas.career import CareerCoachRequest
@@ -16,8 +16,13 @@ from app.career.services.roadmap_service import (
 from app.career.services.history_service import (
     save_report,
 )
+from app.career.services.analytics_service import get_skill_gap_summary
+from app.career.services.roadmap_task_service import attach_task_statuses
+from app.activity.service import ActivityService
+from app.activity.constants import EventType
+from app.analytics.service import AnalyticsService
 
-router = APIRouter()
+router = APIRouter(prefix="/api", tags=["Career"])
 
 
 @router.post("/career-coach")
@@ -33,7 +38,11 @@ def coach(
     save it into the user's history.
     """
 
-    result = generate_career_report(data.model_dump())
+    result = generate_career_report(
+        data.model_dump(),
+        db=db,
+        user_id=current_user.id,
+    )
 
     if not result.get("success"):
         raise HTTPException(
@@ -56,4 +65,34 @@ def coach(
         source=result.get("source", "ai"),
     )
 
+    ActivityService.log_event(
+        db, current_user.id, EventType.CAREER_REPORT_GENERATED,
+        title="Career report generated",
+        description=data.goal or "Career assessment",
+        related_entity_type="career_report",
+    )
+
+    readiness_score = report.get("readiness_score", 0)
+    AnalyticsService.record_snapshot(
+        db, current_user.id, "career_readiness", float(readiness_score),
+    )
+
+    attach_task_statuses(db, current_user.id, report)
+
     return report
+
+
+@router.get("/career/skill-gap-summary")
+def skill_gap_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Return the user's most-frequently-missing skills across their stored
+    JD match results.
+
+    Computed purely from the current user's own JDMatchResult rows.  Returns
+    an explicit insufficient-data response until at least the minimum sample
+    size has been saved.  No external market data is involved.
+    """
+    return get_skill_gap_summary(db, current_user.id)

@@ -16,10 +16,17 @@ from app.models.user import User
 from app.schemas.job_tracker import (
     JobDescriptionMatchRequest,
     JobDescriptionMatchResponse,
+    JDMatchResultResponse,
 )
-from app.main import limiter
+from app.core.limiter import limiter
 from app.services.jd_match_service import match_resume_to_jd, load_resume_data
-from app.utils.exceptions import ValidationException
+from app.services.jd_match_result_service import (
+    persist_match_result,
+    get_latest_result,
+)
+from app.utils.exceptions import ValidationException, NotFoundException
+from app.activity.service import ActivityService
+from app.activity.constants import EventType
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +38,21 @@ def _sanitize_for_log(jd_text: str) -> str:
     length = len(jd_text)
     prefix = jd_text[:80].replace("\n", " ").strip()
     return f"[len={length}] \"{prefix}...\""
+
+
+def _verify_job_application(db: Session, user_id: int, job_application_id: int) -> None:
+    """Confirm the job application belongs to the user before persisting a result.
+
+    Mirrors the cross-module ownership-check pattern (see Communication): never
+    trust a client-supplied application ID.
+    """
+    from app.models.job_application import JobApplication
+    job = db.query(JobApplication).filter(
+        JobApplication.id == job_application_id,
+        JobApplication.user_id == user_id,
+    ).first()
+    if not job:
+        raise NotFoundException("JobApplication", str(job_application_id))
 
 
 @router.post("/analyze", response_model=JobDescriptionMatchResponse)
@@ -45,12 +67,15 @@ def analyze_jd_match(
 
     Accepts either inline resume_data or a saved resume_id.
     Deterministic matching always runs; AI semantic matching is opt-in.
+    When ``job_application_id`` is provided, the result is persisted so it can
+    be shown on the application's detail view.
 
     Protection:
     - JD text is limited to 10000 characters
     - Auth required
     - JD text is not logged in raw form
     - Resume ownership verified when using resume_id
+    - Job application ownership verified when persisting a result
     """
     if not match_req.jd_text or not match_req.jd_text.strip():
         raise ValidationException("Job description text is required")
@@ -79,6 +104,26 @@ def analyze_jd_match(
         )
     except ValueError as e:
         raise ValidationException(str(e))
+
+    if match_req.job_application_id is not None:
+        _verify_job_application(db, current_user.id, match_req.job_application_id)
+        persist_match_result(
+            db=db,
+            user_id=current_user.id,
+            job_application_id=match_req.job_application_id,
+            resume_id=match_req.resume_id,
+            result=result,
+            enable_ai=match_req.enable_ai,
+        )
+
+    ActivityService.log_event(
+        db, current_user.id, EventType.JD_MATCH_ANALYZED,
+        title="JD match analyzed",
+        description="Resume vs job description match",
+        related_entity_type="resume",
+        related_entity_id=match_req.resume_id,
+        related_job_application_id=match_req.job_application_id,
+    )
 
     return JobDescriptionMatchResponse(**result)
 
@@ -111,7 +156,11 @@ def analyze_saved_jd(
         raise NotFoundException("JobApplication", str(job_id))
 
     if not job.job_description or not job.job_description.strip():
-        raise ValidationException("This job application has no saved job description")
+        raise ValidationException(
+            "This job application has no saved job description yet. "
+            "Open the job details and save a Job Description before running "
+            "Resume Match."
+        )
 
     if not job.resume_id:
         raise ValidationException("This job application has no linked resume")
@@ -141,4 +190,40 @@ def analyze_saved_jd(
     except ValueError as e:
         raise ValidationException(str(e))
 
+    # Persist the result against this application so the detail view can show it.
+    persist_match_result(
+        db=db,
+        user_id=current_user.id,
+        job_application_id=job.id,
+        resume_id=job.resume_id,
+        result=result,
+        enable_ai=enable_ai,
+    )
+
+    ActivityService.log_event(
+        db, current_user.id, EventType.JD_MATCH_ANALYZED,
+        title="JD match analyzed",
+        description=f"{job.company} - {job.job_title}",
+        related_entity_type="resume",
+        related_entity_id=job.resume_id,
+        related_job_application_id=job.id,
+    )
+
     return JobDescriptionMatchResponse(**result)
+
+
+@router.get("/results/{job_application_id}", response_model=JDMatchResultResponse)
+def get_saved_match_result(
+    job_application_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Return the latest stored JD match result for a job application.
+
+    Ownership-checked: the job application must belong to the current user.
+    """
+    _verify_job_application(db, current_user.id, job_application_id)
+    result = get_latest_result(db, current_user.id, job_application_id)
+    if result is None:
+        raise NotFoundException("JDMatchResult", f"for application {job_application_id}")
+    return result

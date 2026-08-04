@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_BASE_URL, REQUEST_TIMEOUT, RETRY_CONFIG } from "@/config/environment";
 import { normalizeError } from "@/utils/apiErrorHandler";
+import { authService } from "@/services/authService";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -58,31 +59,83 @@ async function withRetry(requestFn) {
   throw lastError;
 }
 
+let _isRefreshing = false;
+let _failedQueue = [];
+
+function _processQueue(error, token = null) {
+  for (const { resolve, reject } of _failedQueue) {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  }
+  _failedQueue = [];
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const originalRequest = error.config;
+
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    // Don't intercept auth endpoints (login, register, refresh, logout)
+    if (originalRequest.url?.includes("/api/auth/")) {
+      return Promise.reject(error);
+    }
+
+    const status = error.response?.status;
+
+    // --- 401 handling: refresh token and retry ---
+    if (status === 401 && !originalRequest._retry401) {
+      if (_isRefreshing) {
+        return new Promise((resolve, reject) => {
+          _failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        });
+      }
+
+      originalRequest._retry401 = true;
+      _isRefreshing = true;
+
+      try {
+        await authService.refreshToken();
+        const newToken = authService.getAccessToken();
+        _processQueue(null, newToken);
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+      } catch {
+        _processQueue(error, null);
+        return Promise.reject(error);
+      } finally {
+        _isRefreshing = false;
+      }
+    }
+
+    // --- 5xx retry (existing behavior) ---
     const normalized = normalizeError(error);
 
-    if (normalized.retryable) {
-      const config = error.config;
+    if (normalized.retryable && !originalRequest._retry5xx) {
+      originalRequest._retry5xx = true;
 
-      if (config && !config._retry) {
-        config._retry = true;
+      let retries = 0;
+      const maxRetries = RETRY_CONFIG.maxRetries;
 
-        let retries = 0;
-        const maxRetries = RETRY_CONFIG.maxRetries;
-
-        while (retries < maxRetries) {
-          try {
-            await new Promise((resolve) =>
-              setTimeout(resolve, RETRY_CONFIG.retryDelay * (retries + 1))
-            );
-            return await apiClient.request(config);
-          } catch (retryError) {
-            retries++;
-            if (retries >= maxRetries) {
-              throw retryError;
-            }
+      while (retries < maxRetries) {
+        try {
+          await new Promise((resolve) =>
+            setTimeout(resolve, RETRY_CONFIG.retryDelay * (retries + 1))
+          );
+          return await apiClient.request(originalRequest);
+        } catch (retryError) {
+          retries++;
+          if (retries >= maxRetries) {
+            throw retryError;
           }
         }
       }

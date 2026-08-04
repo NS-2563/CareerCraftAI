@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import get_db
 from app.dependencies import get_current_active_user
-from app.main import limiter
+from app.core.limiter import limiter
 from app.models.user import User
+from app.analytics.service import AnalyticsService
 from app.schemas.ai import (
     GenerateSummaryRequest,
     GenerateSummaryResponse,
@@ -102,9 +105,19 @@ def analyze_resume(
     request: Request,
     body: AnalyzeResumeRequest,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Analyze a resume and provide feedback."""
     result = AIService.analyze_resume(body.resume)
+    if not result.get("analysis_failed"):
+        if result.get("ats_score") is not None:
+            AnalyticsService.record_snapshot(
+                db, current_user.id, "ats_score", float(result["ats_score"]),
+            )
+        if result.get("resume_score") is not None:
+            AnalyticsService.record_snapshot(
+                db, current_user.id, "resume_score", float(result["resume_score"]),
+            )
     result["suggestions"] = sanitize_ai_output_list(result.get("suggestions", []))
     result["strengths"] = sanitize_ai_output_list(result.get("strengths", []))
     result["weaknesses"] = sanitize_ai_output_list(result.get("weaknesses", []))

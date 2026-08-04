@@ -1,49 +1,51 @@
-from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import Optional, List
-import json
 
 from app.models.cover_letter import CoverLetter
 from app.models.resume import Resume
 from app.schemas.cover_letter import CoverLetterCreate, CoverLetterUpdate
 from app.utils.exceptions import NotFoundException
+from app.utils.json_utils import to_json, from_json
+from app.utils.versioned import create_version_snapshot, get_version_history, record_version, find_version
+from app.activity.service import ActivityService
+from app.activity.constants import EventType
 
 
-def _to_json(data) -> str:
-    """Convert dict/list to JSON string."""
-    if data is None:
-        return "[]"
-    try:
-        return json.dumps(data)
-    except:
-        return "[]"
+def check_generation_prerequisites(
+    resume_id: Optional[int],
+    job_title: Optional[str],
+    company_name: Optional[str],
+    job_description: Optional[str],
+) -> list:
+    """Return the list of missing generation inputs (empty when ready).
+
+    Deterministic presence check only — mirrors the inputs the generation
+    endpoints consume so the client can surface exactly what is missing before
+    an AI call is attempted. Returns normalized keys: ``"resume"``,
+    ``"job title"``, ``"company name"``, ``"job description"``.
+    """
+    missing = []
+    if not resume_id:
+        missing.append("resume")
+    if not (job_title or "").strip():
+        missing.append("job title")
+    if not (company_name or "").strip():
+        missing.append("company name")
+    if not (job_description or "").strip():
+        missing.append("job description")
+    return missing
 
 
-def _from_json(text: str) -> dict:
-    """Convert JSON string to dict."""
-    if text:
-        try:
-            return json.loads(text)
-        except:
-            pass
-    return {}
-
-
-def _create_version_snapshot(cover_letter: CoverLetter, note: str = None) -> dict:
-    """Create a version snapshot of the cover letter."""
+def _get_all_fields_json(cover_letter: CoverLetter) -> dict:
+    """Get all cover letter fields as dict."""
     return {
-        "version": cover_letter.version,
-        "timestamp": datetime.utcnow().isoformat(),
-        "note": note,
-        "data": {
-            "title": cover_letter.title,
-            "content": cover_letter.content,
-            "job_title": cover_letter.job_title,
-            "company_name": cover_letter.company_name,
-            "job_description": cover_letter.job_description,
-            "tone": cover_letter.tone,
-            "template": cover_letter.template,
-        },
+        "title": cover_letter.title,
+        "content": cover_letter.content,
+        "job_title": cover_letter.job_title,
+        "company_name": cover_letter.company_name,
+        "job_description": cover_letter.job_description,
+        "tone": cover_letter.tone,
+        "template": cover_letter.template,
     }
 
 
@@ -60,9 +62,12 @@ class CoverLetterService:
             ).first()
             if not resume:
                 raise NotFoundException("Resume", str(cover_letter_data.resume_id))
+        if cover_letter_data.job_application_id is not None:
+            CoverLetterService._verify_job_application(db, user_id, cover_letter_data.job_application_id)
         cover_letter = CoverLetter(
             user_id=user_id,
             resume_id=cover_letter_data.resume_id,
+            job_application_id=cover_letter_data.job_application_id,
             title=cover_letter_data.title,
             content=cover_letter_data.content,
             job_title=cover_letter_data.job_title,
@@ -74,7 +79,30 @@ class CoverLetterService:
         db.add(cover_letter)
         db.commit()
         db.refresh(cover_letter)
+        ActivityService.log_event(
+            db, user_id, EventType.COVER_LETTER_CREATED,
+            title="Cover letter created",
+            description=cover_letter.title,
+            related_entity_type="cover_letter",
+            related_entity_id=cover_letter.id,
+            related_job_application_id=cover_letter.job_application_id,
+        )
         return cover_letter
+
+    @staticmethod
+    def _verify_job_application(db: Session, user_id: int, job_application_id: int) -> None:
+        """Verify the job application belongs to the user before linking.
+
+        Mirrors CommunicationMessage's ownership-check pattern — never trust a
+        client-supplied ID across module boundaries.
+        """
+        from app.models.job_application import JobApplication
+        job = db.query(JobApplication).filter(
+            JobApplication.id == job_application_id,
+            JobApplication.user_id == user_id,
+        ).first()
+        if not job:
+            raise NotFoundException("JobApplication", str(job_application_id))
 
     @staticmethod
     def get_by_id(db: Session, cover_letter_id: int, user_id: int) -> CoverLetter:
@@ -88,7 +116,7 @@ class CoverLetterService:
         return cover_letter
 
     @staticmethod
-    def get_all(db: Session, user_id: int, resume_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[CoverLetter]:
+    def get_all(db: Session, user_id: int, resume_id: Optional[int] = None, job_application_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[CoverLetter]:
         """Get all cover letters for a user."""
         query = db.query(CoverLetter).filter(
             CoverLetter.user_id == user_id,
@@ -96,6 +124,8 @@ class CoverLetterService:
         )
         if resume_id:
             query = query.filter(CoverLetter.resume_id == resume_id)
+        if job_application_id:
+            query = query.filter(CoverLetter.job_application_id == job_application_id)
         return query.offset(skip).limit(limit).all()
 
     @staticmethod
@@ -104,11 +134,8 @@ class CoverLetterService:
         cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, user_id)
 
         # Create version snapshot before updating
-        snapshot = _create_version_snapshot(cover_letter, "Before update")
-        history = _from_json(cover_letter.version_history) if cover_letter.version_history else []
-        history.append(snapshot)
-        # Keep last 50 versions
-        cover_letter.version_history = _to_json(history[-50:])
+        snapshot = create_version_snapshot(cover_letter, _get_all_fields_json(cover_letter), "Before update")
+        record_version(cover_letter, snapshot)
 
         # Update fields
         update_data = cover_letter_data.model_dump(exclude_unset=True)
@@ -129,20 +156,41 @@ class CoverLetterService:
             cover_letter.template = update_data["template"]
         if "resume_id" in update_data and update_data["resume_id"] is not None:
             cover_letter.resume_id = update_data["resume_id"]
+        if "job_application_id" in update_data and update_data["job_application_id"] is not None:
+            CoverLetterService._verify_job_application(db, user_id, update_data["job_application_id"])
+            cover_letter.job_application_id = update_data["job_application_id"]
 
         # Increment version
         cover_letter.version += 1
 
         db.commit()
         db.refresh(cover_letter)
+        ActivityService.log_event(
+            db, user_id, EventType.COVER_LETTER_UPDATED,
+            title="Cover letter updated",
+            description=cover_letter.title or "Untitled cover letter",
+            related_entity_type="cover_letter",
+            related_entity_id=cover_letter.id,
+            related_job_application_id=cover_letter.job_application_id,
+        )
         return cover_letter
 
     @staticmethod
     def delete(db: Session, cover_letter_id: int, user_id: int) -> None:
         """Delete a cover letter."""
         cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, user_id)
+        title = cover_letter.title or "Untitled cover letter"
+        job_application_id = cover_letter.job_application_id
         db.delete(cover_letter)
         db.commit()
+        ActivityService.log_event(
+            db, user_id, EventType.COVER_LETTER_DELETED,
+            title="Cover letter deleted",
+            description=title,
+            related_entity_type="cover_letter",
+            related_entity_id=cover_letter_id,
+            related_job_application_id=job_application_id,
+        )
 
     @staticmethod
     def duplicate(db: Session, cover_letter_id: int, user_id: int, new_title: str) -> CoverLetter:
@@ -152,6 +200,7 @@ class CoverLetterService:
         new_cover_letter = CoverLetter(
             user_id=user_id,
             resume_id=original.resume_id,
+            job_application_id=original.job_application_id,
             title=new_title,
             content=original.content,
             job_title=original.job_title,
@@ -165,6 +214,14 @@ class CoverLetterService:
         db.add(new_cover_letter)
         db.commit()
         db.refresh(new_cover_letter)
+        ActivityService.log_event(
+            db, user_id, EventType.COVER_LETTER_DUPLICATED,
+            title="Cover letter duplicated",
+            description=f"{original.title} → {new_cover_letter.title}",
+            related_entity_type="cover_letter",
+            related_entity_id=new_cover_letter.id,
+            related_job_application_id=new_cover_letter.job_application_id,
+        )
         return new_cover_letter
 
     @staticmethod
@@ -180,7 +237,24 @@ class CoverLetterService:
     def get_version_history(db: Session, cover_letter_id: int, user_id: int) -> List[dict]:
         """Get version history."""
         cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, user_id)
-        return _from_json(cover_letter.version_history) if cover_letter.version_history else []
+        return get_version_history(cover_letter.version_history)
+
+    @staticmethod
+    def get_version_content(db: Session, cover_letter_id: int, user_id: int, version: int) -> Optional[str]:
+        """Return the content captured for a specific version, or None.
+
+        The current version reads from the live column; historical versions
+        read from the version-history snapshots. Returns ``None`` when the
+        version is not found (caller decides 404 vs empty diff).
+        """
+        cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, user_id)
+        if version == cover_letter.version:
+            return cover_letter.content
+        history = get_version_history(cover_letter.version_history)
+        target = find_version(history, version)
+        if not target:
+            return None
+        return target.get("data", {}).get("content")
 
     @staticmethod
     def archive(db: Session, cover_letter_id: int, user_id: int) -> CoverLetter:
@@ -266,14 +340,10 @@ class CoverLetterService:
     def restore_version(db: Session, cover_letter_id: int, user_id: int, version: int) -> CoverLetter:
         """Restore a specific version of the cover letter."""
         cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, user_id)
-        history = _from_json(cover_letter.version_history) if cover_letter.version_history else []
+        history = get_version_history(cover_letter.version_history)
 
         # Find the version snapshot
-        target = None
-        for v in history:
-            if v.get("version") == version:
-                target = v
-                break
+        target = find_version(history, version)
 
         if not target:
             raise NotFoundException(f"Version {version}", "not found")
@@ -281,9 +351,8 @@ class CoverLetterService:
         data = target.get("data", {})
 
         # Create snapshot before restoring
-        snapshot = _create_version_snapshot(cover_letter, f"Before restore to v{version}")
-        history.append(snapshot)
-        cover_letter.version_history = _to_json(history[-50:])
+        snapshot = create_version_snapshot(cover_letter, _get_all_fields_json(cover_letter), f"Before restore to v{version}")
+        record_version(cover_letter, snapshot)
 
         # Restore data
         if "title" in data:

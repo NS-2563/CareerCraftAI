@@ -14,7 +14,7 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = Field(None, max_length=255)
+    email: Optional[str] = Field(None, min_length=1, max_length=255)
     username: Optional[str] = Field(None, min_length=3, max_length=100)
     full_name: Optional[str] = Field(None, max_length=255)
     profile_picture: Optional[str] = Field(None, max_length=2048)
@@ -52,6 +52,11 @@ class TokenData(BaseModel):
 class LoginRequest(BaseModel):
     email: str = Field(..., max_length=255)
     password: str = Field(..., max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 class RegisterRequest(UserCreate):

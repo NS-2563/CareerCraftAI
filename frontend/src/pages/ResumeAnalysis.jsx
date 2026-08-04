@@ -1,35 +1,37 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Sparkles, FileText, CheckCircle2, AlertTriangle, TrendingUp, BarChart3, RefreshCw, Brain, Lightbulb, XCircle, Clock, ChevronDown, ChevronUp, Target, Award, ArrowRight, Wrench, Database } from "lucide-react";
+import { Sparkles, FileText, CheckCircle2, AlertTriangle, TrendingUp, BarChart3, RefreshCw, Brain, Lightbulb, XCircle, ChevronDown, ChevronUp, Target, Award, ArrowRight, Wrench, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SuccessBanner, ScoreTooltip } from "@/components/ui/atoms";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import AILoading from "@/components/ai/AILoading";
-import AIEmptyState from "@/components/ai/AIEmptyState";
 import { useResumeContext } from "@/context/useResumeContext";
 import resumeApi from "@/services/resumeApi";
-import { analyzeResume, getCachedAnalysis, getStaleStatus, reAnalyzeResume } from "@/services/analysisApi";
+import { analyzeResume, getCachedAnalysis, reAnalyzeResume, getScoreHistory, getScoreHistoryDiff } from "@/services/analysisApi";
 
-function ScoreBadge({ score, size = "md" }) {
+function ScoreBadge({ score, size = "md", ...props }) {
   const color = score >= 80 ? "bg-green-100 text-green-700 border-green-200" :
     score >= 60 ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
     "bg-red-100 text-red-700 border-red-200";
   return (
-    <span className={`inline-flex items-center justify-center font-bold rounded-full border ${color} ${size === "lg" ? "text-3xl w-20 h-20" : "text-lg w-12 h-12"}`}>
+    <span {...props} className={`inline-flex items-center justify-center font-bold rounded-full border ${color} ${size === "lg" ? "text-3xl w-20 h-20" : "text-lg w-12 h-12"}`}>
       {score}
     </span>
   );
 }
 
-function ScoreCard({ icon: Icon, label, score, sublabel, color = "primary" }) {
+function ScoreCard({ icon: Icon, label, score, sublabel, color = "primary", tooltip }) {
+  const scoreDisplay = (
+    <div className="text-2xl font-bold mt-0.5">{score}<span className="text-sm font-normal text-muted-foreground">/100</span></div>
+  );
   return (
     <Card className="h-full">
       <CardContent className="p-4 flex items-start gap-3">
@@ -38,7 +40,11 @@ function ScoreCard({ icon: Icon, label, score, sublabel, color = "primary" }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm text-muted-foreground truncate">{label}</div>
-          <div className="text-2xl font-bold mt-0.5">{score}<span className="text-sm font-normal text-muted-foreground">/100</span></div>
+          {tooltip ? (
+            <ScoreTooltip description={tooltip}>{scoreDisplay}</ScoreTooltip>
+          ) : (
+            scoreDisplay
+          )}
           {sublabel && <div className="text-xs text-muted-foreground mt-1">{sublabel}</div>}
         </div>
       </CardContent>
@@ -343,6 +349,185 @@ function DeepAnalysisSection({ deepAnalysis }) {
   );
 }
 
+function Sparkline({ values }) {
+  const width = 220;
+  const height = 44;
+  if (!values || values.length < 2) return null;
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  const points = values
+    .map((value, i) => {
+      const x = (i / (values.length - 1)) * width;
+      const y = height - 4 - ((value - min) / range) * (height - 8);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  const lastX = width;
+  const lastY = height - 4 - ((values[values.length - 1] - min) / range) * (height - 8);
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible" aria-hidden>
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={lastX} cy={lastY} r="3" fill="currentColor" />
+    </svg>
+  );
+}
+
+function DiffFact({ diff }) {
+  const facts = [];
+
+  (diff.skills_added || []).forEach((skill) =>
+    facts.push({
+      key: `added-${skill}`,
+      icon: "+",
+      tone: "text-green-600",
+      text: `Added skill: ${skill}`,
+    })
+  );
+
+  (diff.skills_removed || []).forEach((skill) =>
+    facts.push({
+      key: `removed-${skill}`,
+      icon: "−",
+      tone: "text-red-600",
+      text: `Removed skill: ${skill}`,
+    })
+  );
+
+  if (typeof diff.summary_changed === "boolean") {
+    const delta = diff.summary_word_delta || 0;
+    facts.push({
+      key: "summary",
+      icon: diff.summary_changed ? "~" : "=",
+      tone: diff.summary_changed ? "text-amber-600" : "text-slate-400",
+      text: diff.summary_changed
+        ? `Summary text changed${delta !== 0 ? ` (${delta > 0 ? "+" : ""}${delta} words)` : ""}`
+        : "Summary text unchanged",
+    });
+  }
+
+  const covered = diff.jd_keywords_now_covered || [];
+  if (covered.length > 0) {
+    facts.push({
+      key: "jd",
+      icon: "+",
+      tone: "text-blue-600",
+      text: `Now covers: ${covered.join(", ")}`,
+    });
+  }
+
+  if (facts.length === 0) {
+    return <p className="text-sm text-slate-500">No content changes detected.</p>;
+  }
+
+  return (
+    <ul className="space-y-1.5">
+      {facts.map((fact) => (
+        <li key={fact.key} className="flex items-start gap-2 text-sm">
+          <span className={`w-4 shrink-0 font-bold ${fact.tone}`}>{fact.icon}</span>
+          <span>{fact.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ScoreTrendCard({ resumeId }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["score-history", resumeId],
+    queryFn: () => getScoreHistory(resumeId, "ats_score", 20),
+    enabled: Boolean(resumeId),
+    staleTime: 60 * 1000,
+  });
+
+  const snapshots = data?.data?.snapshots || [];
+
+  const diffFrom = snapshots.length >= 2 ? snapshots[snapshots.length - 2]?.id : null;
+  const diffTo = snapshots.length >= 2 ? snapshots[snapshots.length - 1]?.id : null;
+
+  const diffQuery = useQuery({
+    queryKey: ["score-history-diff", resumeId, diffFrom, diffTo],
+    queryFn: () => getScoreHistoryDiff(resumeId, diffFrom, diffTo),
+    enabled: Boolean(resumeId && diffFrom && diffTo),
+    retry: false,
+    staleTime: 60 * 1000,
+  });
+
+  if (!resumeId || isLoading || !data?.success) return null;
+
+  const { count, latest, previous, change } = data.data || {};
+
+  const changeTone = change >= 0 ? "text-green-600" : "text-red-600";
+
+  return (
+    <div className="rounded-lg border bg-slate-50/70 px-4 py-3 space-y-3">
+      <div className="flex items-center gap-3">
+        <TrendingUp className="w-5 h-5 text-blue-600 shrink-0" />
+        {count >= 2 ? (
+          <p className="text-sm text-slate-700">
+            ATS score went from <span className="font-semibold">{previous}</span>{" "}
+            <ArrowRight className="inline w-4 h-4 text-slate-400" />{" "}
+            <span className="font-semibold">{latest}</span>
+            <span className={`ml-1.5 font-semibold ${changeTone}`}>
+              ({change >= 0 ? "+" : ""}{change})
+            </span>{" "}
+            after your last edit.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-600">
+            Keep editing to see your ATS score trend over time.
+          </p>
+        )}
+      </div>
+
+      {count >= 2 && (
+        <div className="flex items-center gap-4">
+          <div className="text-blue-600">
+            <Sparkline values={snapshots.map((s) => s.value)} />
+          </div>
+          <div className="text-xs text-slate-500 tabular-nums shrink-0">
+            {snapshots.length} snapshot{snapshots.length === 1 ? "" : "s"}
+          </div>
+        </div>
+      )}
+
+      {count >= 2 && (
+        <div className="border-t pt-3">
+          <p className="text-sm font-semibold text-slate-800">
+            ATS Score <span className={changeTone}>{change >= 0 ? "+" : ""}{change}</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5 mb-2">What changed</p>
+
+          {diffQuery.isLoading && (
+            <Skeleton className="h-16 w-full" />
+          )}
+
+          {!diffQuery.isLoading && diffQuery.isError && (
+            <p className="text-sm text-slate-500">
+              Content wasn&apos;t captured for these earlier snapshots — run a fresh analysis to enable diffs.
+            </p>
+          )}
+
+          {!diffQuery.isLoading && !diffQuery.isError && diffQuery.data?.success && (
+            <DiffFact diff={diffQuery.data.data} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalysisResults({ analysis, resumeId, navigate, isStale = false, isCached = false }) {
   const det = analysis.deterministic;
   const quality = analysis.quality_report;
@@ -376,12 +561,16 @@ function AnalysisResults({ analysis, resumeId, navigate, isStale = false, isCach
             </Badge>
           )}
         </div>
-        <ScoreBadge score={det.overall_quality_score.overall_score} size="lg" />
+        <ScoreTooltip description="A weighted average of completeness, action verbs, quantified metrics, bullet quality, section balance, and summary quality.">
+          <ScoreBadge score={det.overall_quality_score.overall_score} size="lg" />
+        </ScoreTooltip>
       </div>
 
+      <ScoreTrendCard resumeId={resumeId} />
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <ScoreCard icon={FileText} label="Resume Quality" score={quality?.overall_score || det.overall_quality_score.overall_score} color="primary" />
-        <ScoreCard icon={CheckCircle2} label="ATS Score" score={ats?.overall_ats_score || 0} color="blue" />
+        <ScoreCard icon={FileText} label="Resume Quality" score={quality?.overall_score || det.overall_quality_score.overall_score} color="primary" tooltip="A weighted average of completeness, action verbs, quantified metrics, bullet quality, section balance, and summary quality." />
+        <ScoreCard icon={CheckCircle2} label="ATS Score" score={ats?.overall_ats_score || 0} color="blue" tooltip="Weighted average of 5 deterministic checks: structure (25%), keyword coverage (20%), action verbs (20%), quantified impact (20%), and contact info (15%)." />
         <ScoreCard icon={BarChart3} label="Completeness" score={det.completeness.overall_completeness_score} color="emerald" />
         <ScoreCard icon={TrendingUp} label="Skills" sublabel={`${skills?.skill_count || 0} skills found`} score={skills ? Math.min(100, skills.skill_count * 10) : 0} color="purple" />
       </div>
@@ -547,7 +736,9 @@ function AnalysisResults({ analysis, resumeId, navigate, isStale = false, isCach
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-lg font-bold">Overall ATS Score</span>
-                <ScoreBadge score={ats?.overall_ats_score || 0} />
+                <ScoreTooltip description="Weighted average of 5 deterministic checks: structure (25%), keyword coverage (20%), action verbs (20%), quantified impact (20%), and contact info (15%).">
+                  <ScoreBadge score={ats?.overall_ats_score || 0} />
+                </ScoreTooltip>
               </div>
               <Progress value={ats?.overall_ats_score || 0} className="h-2" />
               {ats?.risk_level && (
@@ -702,6 +893,7 @@ export default function ResumeAnalysis() {
   const [isStale, setIsStale] = useState(false);
   const [isCached, setIsCached] = useState(false);
   const [loadingCached, setLoadingCached] = useState(false);
+  const [analysisJustCompleted, setAnalysisJustCompleted] = useState(false);
 
   const { data: resumes, isLoading: resumesLoading } = useQuery({
     queryKey: ["resumes"],
@@ -758,6 +950,7 @@ export default function ResumeAnalysis() {
       if (result.success) {
         setAnalysisResult(result.data);
         setHasRun(true);
+        setAnalysisJustCompleted(true);
       } else {
         setError(result.error || "Analysis failed");
       }
@@ -779,6 +972,7 @@ export default function ResumeAnalysis() {
       if (result.success) {
         setAnalysisResult(result.data);
         setHasRun(true);
+        setAnalysisJustCompleted(true);
       } else {
         setError(result.error || "Re-analysis failed");
       }
@@ -800,6 +994,7 @@ export default function ResumeAnalysis() {
     setHasRun(false);
     setIsStale(false);
     setIsCached(false);
+    setAnalysisJustCompleted(false);
     if (id) {
       setSearchParams({ id: String(id) });
     } else {
@@ -864,9 +1059,9 @@ export default function ResumeAnalysis() {
 
       {loadingCached && selectedResumeId && !hasRun && (
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-            <p className="text-sm">Checking for cached analysis...</p>
+          <CardContent className="p-8 space-y-3">
+            <Skeleton className="h-4 w-40 mx-auto" />
+            <Skeleton className="h-4 w-56 mx-auto" />
           </CardContent>
         </Card>
       )}
@@ -940,15 +1135,22 @@ export default function ResumeAnalysis() {
         </Card>
       )}
 
+      {analysisJustCompleted && showResults && (
+        <SuccessBanner onDismiss={() => setAnalysisJustCompleted(false)}>
+          Analysis complete — your ATS score, quality report, and recommendations
+          are ready below.
+        </SuccessBanner>
+      )}
+
       {showResults && (
         <AnalysisResults analysis={analysisResult} resumeId={resumeIdFromUrl} navigate={navigate} isStale={isStale} isCached={isCached} />
       )}
 
       {!showSelector && !showAnalyzeReady && !loading && !hasRun && !showNoResumes && selectedResumeId && !resumeData && (
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-            <p className="text-sm">Loading resume data...</p>
+          <CardContent className="p-8 space-y-3">
+            <Skeleton className="h-4 w-40 mx-auto" />
+            <Skeleton className="h-4 w-64 mx-auto" />
           </CardContent>
         </Card>
       )}

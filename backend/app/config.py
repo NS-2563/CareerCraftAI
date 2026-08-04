@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     # Rate limiting — unauthenticated endpoints (IP-based)
     RATE_LIMIT_LOGIN: str = "10/minute"
     RATE_LIMIT_REGISTER: str = "5/minute"
-    RATE_LIMIT_REFRESH: str = "10/minute"
+    RATE_LIMIT_REFRESH: str = "30/minute"
+    RATE_LIMIT_CHANGE_PASSWORD: str = "5/minute"
 
     # Rate limiting — AI endpoints (per-user burst + daily quota)
     # Relatively high defaults for tests; production should tighten via .env
@@ -41,6 +42,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_COMMUNICATION_DAILY: str = "100/day"
     RATE_LIMIT_CAREER_COACH: str = "20/minute"
     RATE_LIMIT_CAREER_COACH_DAILY: str = "50/day"
+    RATE_LIMIT_INTERVIEW_PREP: str = "30/minute"
+    RATE_LIMIT_INTERVIEW_PREP_DAILY: str = "100/day"
+    RATE_LIMIT_INTERVIEW_EVAL: str = "60/minute"
+    RATE_LIMIT_INTERVIEW_EVAL_DAILY: str = "200/day"
 
     # Account lockout
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
@@ -60,6 +65,11 @@ class Settings(BaseSettings):
 
     # Suggestions
     SUGGESTION_FOLLOW_UP_DAYS: int = 7
+
+    # Communication thread-summary overdue rule: the conversation is flagged
+    # "response overdue" when the most recent message is inbound and MORE than
+    # this many whole days have passed with no outbound reply (strictly >).
+    COMMUNICATION_OVERDUE_AFTER_DAYS: int = 5
 
     @property
     def cors_origins_list(self) -> List[str]:

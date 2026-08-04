@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
+from copy import deepcopy
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_active_user
 from app.models.user import User
 from app.career.services.analytics_service import get_analytics
+from app.career.services.roadmap_task_service import attach_task_statuses
 
 from app.career.services.history_service import (
     get_history,
@@ -12,6 +14,7 @@ from app.career.services.history_service import (
     delete_report,
     clear_history,
 )
+from app.utils.response import deleted_response
 
 router = APIRouter(
     prefix="/career",
@@ -28,10 +31,27 @@ def history(
     Return all saved career reports
     for the current user.
     """
-    return get_history(
+    reports = get_history(
         db=db,
         user_id=current_user.id,
     )
+
+    items = []
+    for record in reports:
+        report_json = deepcopy(record.report_json or {})
+        attach_task_statuses(db, current_user.id, report_json)
+        items.append({
+            "id": record.id,
+            "user_id": record.user_id,
+            "career_goal": record.career_goal,
+            "readiness_score": record.readiness_score,
+            "best_match": record.best_match,
+            "source": record.source,
+            "created_at": record.created_at,
+            "report_json": report_json,
+        })
+
+    return items
 
 @router.get("/analytics")
 def analytics(
@@ -64,7 +84,19 @@ def history_detail(
             detail="Career report not found.",
         )
 
-    return report
+    report_json = deepcopy(report.report_json or {})
+    attach_task_statuses(db, current_user.id, report_json)
+
+    return {
+        "id": report.id,
+        "user_id": report.user_id,
+        "career_goal": report.career_goal,
+        "readiness_score": report.readiness_score,
+        "best_match": report.best_match,
+        "source": report.source,
+        "created_at": report.created_at,
+        "report_json": report_json,
+    }
 
 
 @router.delete("/history/{report_id}")
@@ -88,10 +120,7 @@ def remove_report(
             detail="Career report not found.",
         )
 
-    return {
-        "success": True,
-        "message": "Career report deleted.",
-    }
+    return deleted_response(message="Career report deleted.")
 
 
 @router.delete("/history")
