@@ -11,6 +11,8 @@ engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if _is_sqlite else {},
     echo=False,
+    pool_pre_ping=True,
+    **({"pool_recycle": 300} if not _is_sqlite else {}),
 )
 
 if _is_sqlite:
@@ -20,6 +22,23 @@ if _is_sqlite:
         """Enable WAL journal mode to reduce write-lock contention."""
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.close()
+
+else:
+
+    @event.listens_for(engine, "connect")
+    def _set_pg_utc(dbapi_connection, connection_record):
+        """Normalize PostgreSQL to UTC.
+
+        The app stores all timestamps as UTC (naive in SQLite, timestamptz in
+        PostgreSQL). PG servers often default to a local timezone (e.g.
+        Asia/Calcutta), which would make timestamptz reads/serialization come
+        back in a non-UTC offset. Forcing the session timezone to UTC keeps
+        reads deterministic and consistent with the naive-UTC convention the
+        rest of the code is written against.
+        """
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET TIME ZONE 'UTC'")
         cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

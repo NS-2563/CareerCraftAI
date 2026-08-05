@@ -451,13 +451,13 @@ class TestApplicationSessionsApi:
         db_session.add(InterviewSession(
             user_id=user.id, session_type="practice", job_title="Engineer",
             question_count=5, related_job_application_id=job.id,
-            overall_score=80, completed_at=datetime.utcnow(),
+            overall_score=80, completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         ))
         db_session.add(InterviewSession(
             user_id=user.id, session_type="real_interview", job_title="Engineer",
             company_name="Acme", question_count=0, related_job_application_id=job.id,
             how_it_went="Went well", self_rated_confidence=75,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         ))
         db_session.commit()
 
@@ -478,13 +478,13 @@ class TestApplicationSessionsApi:
         db_session.add(InterviewSession(
             user_id=user.id, session_type="practice", job_title="A",
             question_count=5, related_job_application_id=job_a.id,
-            overall_score=80, completed_at=datetime.utcnow(),
+            overall_score=80, completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         ))
         db_session.add(InterviewSession(
             user_id=user.id, session_type="real_interview", job_title="B",
             question_count=0, related_job_application_id=job_b.id,
             how_it_went="Went well", self_rated_confidence=70,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         ))
         db_session.commit()
 

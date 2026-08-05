@@ -35,7 +35,7 @@ def get_active_suggestions(db: Session, user_id: int) -> List[dict]:
         .all()
     )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     results = []
     for row in rows:
         updated = row.updated_at
@@ -83,7 +83,7 @@ def mark_actioned(db: Session, suggestion_id: int, user_id: int) -> Communicatio
 
 def check_and_create_suggestions(db: Session):
     threshold_days = settings.SUGGESTION_FOLLOW_UP_DAYS
-    cutoff = datetime.utcnow() - timedelta(days=threshold_days)
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=threshold_days)
 
     stale_jobs = (
         db.query(JobApplication)

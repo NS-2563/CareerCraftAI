@@ -15,7 +15,7 @@ duplicated in ``resume_service``, ``cover_letter_service`` and the
 communication service.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.utils.json_utils import to_json, from_json
 
@@ -25,7 +25,7 @@ VERSION_HISTORY_LIMIT = 50
 
 def utcnow_iso() -> str:
     """Current UTC time as an ISO-8601 string."""
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
 def create_version_snapshot(entity, data: dict, note: str = None) -> dict:

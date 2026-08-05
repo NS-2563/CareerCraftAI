@@ -2,7 +2,7 @@
 
 import json
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -59,9 +59,9 @@ def _make_session(db, user_id, job_title, overall_score, answers=None, created_o
             {"id": "q2", "question": "Test2?", "category": "Behavioral", "difficulty": "easy"},
         ]),
         answers=json.dumps(answers or []),
-        created_at=datetime.utcnow() - timedelta(hours=created_offset_hours),
-        started_at=datetime.utcnow() - timedelta(hours=created_offset_hours),
-        completed_at=datetime.utcnow() if overall_score is not None else None,
+        created_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=created_offset_hours),
+        started_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=created_offset_hours),
+        completed_at=datetime.now(timezone.utc).replace(tzinfo=None) if overall_score is not None else None,
     )
     db.add(sess)
     db.commit()

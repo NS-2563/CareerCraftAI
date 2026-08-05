@@ -19,6 +19,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.main import app
+from app.config import settings
+from app.core.limiter import limiter
 from app.database import Base, get_db
 from app.dependencies import get_password_hash, verify_password, create_access_token
 from app.models.user import User
@@ -136,12 +138,12 @@ def _create_communication_message(db, user_id, subject="Message"):
 
 
 def _create_interview_session(db, user_id, overall_score=80.0):
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.interview_prep.models import InterviewSession
     s = InterviewSession(
         user_id=user_id, job_title="Engineer", difficulty="medium",
         question_count=5, overall_score=overall_score,
-        completed_at=datetime.utcnow(),
+        completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db.add(s)
     db.commit()
@@ -270,19 +272,25 @@ class TestChangePassword:
         user = _create_user(db_session, email="cp_rl@example.com", username="cprl",
                             password="Current123!", user_id=989001)
 
-        last_resp = None
-        for _ in range(8):
-            last_resp = client.post(
-                "/api/auth/change-password",
-                json={"current_password": "WrongPass123!", "new_password": "NewPass123!"},
-                headers=_auth_headers(user),
-            )
-            if last_resp.status_code == 429:
-                break
+        # This test deliberately verifies 429 enforcement, so it opts back in to
+        # the limiter that the rest of the suite runs with disabled.
+        limiter.enabled = True
+        try:
+            last_resp = None
+            for _ in range(8):
+                last_resp = client.post(
+                    "/api/auth/change-password",
+                    json={"current_password": "WrongPass123!", "new_password": "NewPass123!"},
+                    headers=_auth_headers(user),
+                )
+                if last_resp.status_code == 429:
+                    break
 
-        assert last_resp is not None and last_resp.status_code == 429, (
-            f"Expected eventual 429, last status: {last_resp.status_code if last_resp else 'N/A'}"
-        )
+            assert last_resp is not None and last_resp.status_code == 429, (
+                f"Expected eventual 429, last status: {last_resp.status_code if last_resp else 'N/A'}"
+            )
+        finally:
+            limiter.enabled = not settings.TESTING
 
 
 # ─── Logout all devices ────────────────────────────────────────────────

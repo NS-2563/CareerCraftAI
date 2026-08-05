@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, status, Query, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.config import settings
 from app.database import get_db
@@ -376,7 +376,7 @@ def generate_ai_cover_letter(
     """Generate a cover letter using AI."""
     provider = _get_ai_provider()
     metadata = _provider_metadata(provider)
-    generated_at = datetime.utcnow()
+    generated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Get resume data if provided
     resume_data = None
@@ -433,7 +433,7 @@ def generate_for_existing(
     cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, current_user.id)
     provider = _get_ai_provider()
     metadata = _provider_metadata(provider)
-    generated_at = datetime.utcnow()
+    generated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Get resume data if provided
     resume_data = None
@@ -530,7 +530,7 @@ def ai_edit_cover_letter(
         content=new_content,
         ai_provider=metadata["ai_provider"],
         model_name=metadata["model_name"],
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc).replace(tzinfo=None),
         ats_coverage=compute_keyword_coverage(cover_letter.job_description, new_content),
     )
 
@@ -548,7 +548,7 @@ def apply_ai_edit(
     cover_letter = CoverLetterService.get_by_id(db, cover_letter_id, current_user.id)
     provider = _get_ai_provider()
     metadata = _provider_metadata(provider)
-    generated_at = datetime.utcnow()
+    generated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     content = body.content or cover_letter.content or ""
     job_title = body.job_title or cover_letter.job_title

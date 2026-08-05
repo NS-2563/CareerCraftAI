@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
 from sqlalchemy import func as sa_func
@@ -194,7 +194,7 @@ class InterviewPrepService:
             how_it_went=request.how_it_went,
             self_rated_confidence=request.self_rated_confidence,
             questions_asked=request.questions_asked,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         db.add(session)
         db.commit()
@@ -281,7 +281,7 @@ class InterviewPrepService:
             try:
                 session.completed_at = datetime.fromisoformat(request.completed_at)
             except (ValueError, TypeError):
-                session.completed_at = datetime.utcnow()
+                session.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         db.commit()
         db.refresh(session)

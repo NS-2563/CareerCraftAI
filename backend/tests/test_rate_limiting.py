@@ -12,6 +12,8 @@ from fastapi import Request
 from starlette.testclient import TestClient
 
 from app.main import app, _user_or_ip_key
+from app.config import settings
+from app.core.limiter import limiter
 from app.database import Base, get_db
 from app.dependencies import get_current_active_user, create_access_token
 from app.models.user import User
@@ -125,6 +127,9 @@ def test_rate_limit_429_returned_when_exceeded(db_session, test_user, auth_heade
     app.dependency_overrides[get_db] = _override_get_db(db_session)
     app.dependency_overrides[get_current_active_user] = _override_get_current_user(test_user)
     client = TestClient(app)
+    # This test deliberately verifies 429 enforcement, so it opts back in to the
+    # limiter that the rest of the suite runs with disabled (see tests/conftest.py).
+    limiter.enabled = True
     try:
         last_resp = None
         for _ in range(70):
@@ -141,3 +146,4 @@ def test_rate_limit_429_returned_when_exceeded(db_session, test_user, auth_heade
         )
     finally:
         app.dependency_overrides.clear()
+        limiter.enabled = not settings.TESTING

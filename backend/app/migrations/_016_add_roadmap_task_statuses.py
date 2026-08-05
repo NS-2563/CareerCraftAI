@@ -1,31 +1,36 @@
 """Migration: Create roadmap_task_statuses table for user-set recommendation status.
 
 One row per user per recommendation (normalized skill name) so task statuses
-persist independently of Career Coach report regeneration. Safe to call
-multiple times — uses CREATE TABLE IF NOT EXISTS.
+persist independently of Career Coach report regeneration. The table is
+expressed as a SQLAlchemy Core Table mirrored from the ORM model
+(RoadmapTaskStatus), so the DDL is dialect-portable (auto-increment handled by
+each dialect's own mechanism; no SQLite-only AUTOINCREMENT/DATETIME syntax).
+Safe to call multiple times — guarded by a table-existence check and the
+Core create uses checkfirst=True.
 """
 
-from sqlalchemy import text, inspect
-
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, MetaData, String, Table, UniqueConstraint, func, inspect
 
 TABLE_NAME = "roadmap_task_statuses"
 
-CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS roadmap_task_statuses (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    skill VARCHAR(255) NOT NULL,
-    skill_key VARCHAR(255) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'not_started',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
-"""
+_META = MetaData()
 
-INDEX_USER_SQL = "CREATE INDEX IF NOT EXISTS ix_roadmap_task_statuses_user_id ON roadmap_task_statuses(user_id)"
-UNIQUE_SKILL_SQL = (
-    "CREATE UNIQUE INDEX IF NOT EXISTS uq_roadmap_task_status_user_skill_key "
-    "ON roadmap_task_statuses(user_id, skill_key)"
+# Parent table referenced by the user_id FK — lightweight stub so the DDL
+# compiler can resolve "users". It is never created here; only the target
+# table is created below, and the real parent already exists in the DB.
+users = Table("users", _META, Column("id", Integer, primary_key=True))
+
+TABLE = Table(
+    TABLE_NAME,
+    _META,
+    Column("id", Integer, primary_key=True, index=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("skill", String(255), nullable=False, comment="Display casing of the recommendation skill"),
+    Column("skill_key", String(255), nullable=False, comment="Lowercased/whitespace-normalized skill for identity matching"),
+    Column("status", String(20), nullable=False, default="not_started"),
+    Column("created_at", DateTime, server_default=func.now(), nullable=False),
+    Column("updated_at", DateTime, server_default=func.now(), nullable=False),
+    UniqueConstraint("user_id", "skill_key", name="uq_roadmap_task_status_user_skill_key"),
 )
 
 
@@ -36,12 +41,10 @@ def table_exists(conn, table_name: str) -> bool:
 
 def upgrade(conn):
     if not table_exists(conn, TABLE_NAME):
-        conn.execute(text(CREATE_SQL))
-        conn.execute(text(INDEX_USER_SQL))
-        conn.execute(text(UNIQUE_SKILL_SQL))
+        TABLE.create(conn, checkfirst=True)
         return [TABLE_NAME]
     return []
 
 
 def downgrade(conn):
-    conn.execute(text(f"DROP TABLE IF EXISTS {TABLE_NAME}"))
+    TABLE.drop(conn, checkfirst=True)

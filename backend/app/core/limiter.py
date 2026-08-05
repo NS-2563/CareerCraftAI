@@ -8,6 +8,7 @@ router imported ``limiter`` from ``app.main``).
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.config import settings
 from app.dependencies import decode_token
 
 
@@ -31,4 +32,4 @@ def _user_or_ip_key(request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=_user_or_ip_key)
+limiter = Limiter(key_func=_user_or_ip_key, enabled=not settings.TESTING)

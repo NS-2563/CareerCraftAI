@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import result
 
 from app.ai.context_builder import build_context
@@ -168,7 +168,7 @@ def build_fallback_report(data: dict, db=None, user_id: int = None) -> dict:
                 ""
             ),
 
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
 
             "readiness_score": readiness[
                 "career_readiness_score"
@@ -397,7 +397,7 @@ Return only valid JSON.
             result["data"]["skill_gap"] = skill_gap
 
             if "generated_at" not in result["data"]:
-                result["data"]["generated_at"] = datetime.utcnow().isoformat()
+                result["data"]["generated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             return result
 
         logger.warning(

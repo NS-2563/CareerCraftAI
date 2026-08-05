@@ -9,7 +9,7 @@ Covers:
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -91,7 +91,7 @@ def _snapshot(db, user_id, resume_id, value, skills, summary, recorded_at=None):
         metric_type="ats_score",
         value=value,
         content_json={"skills": skills, "summary": summary},
-        recorded_at=recorded_at or datetime.utcnow(),
+        recorded_at=recorded_at or datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db.add(snap)
     db.commit()
@@ -252,7 +252,7 @@ class TestScoreDiffApi:
         return user, {"Authorization": f"Bearer {token}"}
 
     def _seed_two_snapshots(self, db_session, user, resume):
-        base = datetime.utcnow()
+        base = datetime.now(timezone.utc).replace(tzinfo=None)
         snap_a = _snapshot(
             db_session, user.id, resume.id, 72.0,
             ["Python", "Java"],
@@ -336,10 +336,10 @@ class TestScoreDiffApi:
         user, headers = test_user
         resume = _create_resume(db_session, user.id)
         snap_a = _snapshot(db_session, user.id, resume.id, 72.0, ["Python"], "x",
-                           recorded_at=datetime.utcnow() - timedelta(days=2))
+                           recorded_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=2))
         snap_b = ScoreSnapshot(
             user_id=user.id, resume_id=resume.id, metric_type="ats_score",
-            value=85.0, content_json=None, recorded_at=datetime.utcnow(),
+            value=85.0, content_json=None, recorded_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         db_session.add(snap_b)
         db_session.commit()
@@ -356,9 +356,9 @@ class TestScoreDiffApi:
         resume = _create_resume(db_session, user.id)
         other = _create_resume(db_session, user.id)
         snap_a = _snapshot(db_session, user.id, resume.id, 72.0, ["Python"], "x",
-                           recorded_at=datetime.utcnow() - timedelta(days=2))
+                           recorded_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=2))
         snap_b = _snapshot(db_session, user.id, other.id, 85.0, ["Python"], "x",
-                           recorded_at=datetime.utcnow())
+                           recorded_at=datetime.now(timezone.utc).replace(tzinfo=None))
 
         r = client.get(
             f"/api/resume/{resume.id}/score-history/diff"
@@ -371,12 +371,12 @@ class TestScoreDiffApi:
         user, headers = test_user
         resume = _create_resume(db_session, user.id)
         snap_a = _snapshot(db_session, user.id, resume.id, 72.0, ["Python"], "x",
-                           recorded_at=datetime.utcnow() - timedelta(days=2))
+                           recorded_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=2))
         snap_b = ScoreSnapshot(
             user_id=user.id, resume_id=resume.id, metric_type="resume_score",
             value=85.0,
             content_json={"skills": ["Python"], "summary": "x"},
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         db_session.add(snap_b)
         db_session.commit()

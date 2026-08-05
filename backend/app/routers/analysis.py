@@ -1,6 +1,6 @@
 """Analysis API router with persistence, caching, and version awareness."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/api/analysis", tags=["Analysis"])
 def _build_analysis_response(result: dict) -> AnalysisResponse:
     return AnalysisResponse(
         status="success",
-        analyzed_at=datetime.utcnow().isoformat(),
+        analyzed_at=datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         deterministic=result["deterministic"],
         quality_report=result.get("quality_report"),
         ats_analysis=result.get("ats_analysis"),

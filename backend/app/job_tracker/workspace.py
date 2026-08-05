@@ -41,7 +41,7 @@ def _days_since_applied(job) -> int | None:
         return max(delta, 0)
     created = getattr(job, "created_at", None)
     if created:
-        now = datetime.now(timezone.utc) if created.tzinfo else datetime.utcnow()
+        now = datetime.now(timezone.utc) if created.tzinfo else datetime.now(timezone.utc).replace(tzinfo=None)
         return max((now - created).days, 0)
     return None
 

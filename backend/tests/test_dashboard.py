@@ -79,9 +79,9 @@ def _create_job_application(db, user_id, company="Acme", job_title="Engineer", s
 
 
 def _create_interview_session(db, user_id, job_title="Engineer", overall_score=None):
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.interview_prep.models import InterviewSession
-    completed = datetime.utcnow() if overall_score is not None else None
+    completed = datetime.now(timezone.utc).replace(tzinfo=None) if overall_score is not None else None
     s = InterviewSession(
         user_id=user_id, job_title=job_title, difficulty="medium",
         question_count=5, overall_score=overall_score,
@@ -172,14 +172,14 @@ class TestDashboardService:
         assert len(summary["ai_insights"]) >= 1
 
     def test_resume_created_this_week_excludes_old_resumes(self, db_session):
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from app.models.resume import Resume
 
         user = _create_user(db_session)
         _create_resume(db_session, user.id, "New Resume", completed=True)
 
         old = _create_resume(db_session, user.id, "Old Resume", completed=True)
-        old.created_at = datetime.utcnow() - timedelta(days=20)
+        old.created_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=20)
         db_session.commit()
 
         summary = DashboardService.get_summary(db_session, user.id)

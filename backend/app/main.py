@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from fastapi import FastAPI, status
@@ -141,7 +141,7 @@ def health_check():
             "status": "healthy",
             "version": "1.0.0",
             "database": "connected",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         },
         message="Service is running",
     )

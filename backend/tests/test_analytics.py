@@ -1,6 +1,6 @@
 """Tests for the Analytics snapshot module."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
@@ -95,7 +95,7 @@ class TestAnalyticsService:
         db_session.commit()
 
         with patch("app.analytics.service.datetime") as mock_dt:
-            mock_dt.utcnow.return_value = recent
+            mock_dt.now.return_value = recent
             AnalyticsService.record_snapshot(
                 db_session, user_id=1,
                 metric_type="career_readiness", value=70.0,

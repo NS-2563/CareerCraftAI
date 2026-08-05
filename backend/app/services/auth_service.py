@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -58,7 +58,7 @@ class AuthService:
         """Authenticate and login user."""
         user = db.query(User).filter(User.email == email).first()
 
-        if user and user.locked_until and user.locked_until > datetime.utcnow():
+        if user and user.locked_until and user.locked_until > datetime.now(timezone.utc).replace(tzinfo=None):
             raise TooManyRequestsException("Account is temporarily locked. Try again later.")
 
         if not user or not verify_password(password, user.hashed_password if user else ""):
@@ -66,7 +66,7 @@ class AuthService:
                 user.failed_login_attempts += 1
                 locked = user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS
                 if locked:
-                    user.locked_until = datetime.utcnow() + timedelta(
+                    user.locked_until = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
                         minutes=settings.ACCOUNT_LOCKOUT_MINUTES
                     )
                 db.commit()

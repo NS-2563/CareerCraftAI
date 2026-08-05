@@ -79,12 +79,12 @@ def _create_user(db, email, username, password="Test1234!"):
 
 
 def _activity(db, user_id, event_type, title="title", description=None):
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from app.activity.models import ActivityEvent
     db.add(ActivityEvent(
         user_id=user_id, event_type=event_type, title=title,
         description=description,
-        created_at=datetime.utcnow() + timedelta(minutes=len(title)),
+        created_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=len(title)),
     ))
     db.commit()
 

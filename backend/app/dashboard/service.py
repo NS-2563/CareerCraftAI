@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, nullslast, or_
 from sqlalchemy.orm import Session
@@ -73,7 +73,7 @@ class DashboardService:
                 .filter(
                     Resume.user_id == user_id,
                     Resume.is_archived == False,
-                    Resume.created_at >= datetime.utcnow() - timedelta(days=7),
+                    Resume.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7),
                 )
                 .scalar()
                 or 0
@@ -497,7 +497,9 @@ class DashboardService:
                     if isinstance(last_interview_activity, str):
                         last_interview_activity = last_interview_activity.replace("Z", "+00:00")
                     last_time = last_interview_activity if isinstance(last_interview_activity, datetime) else datetime.fromisoformat(last_interview_activity)
-                    days_since = (datetime.utcnow() - last_time).days
+                    if last_time.tzinfo is None:
+                        last_time = last_time.replace(tzinfo=timezone.utc)
+                    days_since = (datetime.now(timezone.utc) - last_time).days
                     if days_since >= 7:
                         insights.append({
                             "type": "practice_reminder",

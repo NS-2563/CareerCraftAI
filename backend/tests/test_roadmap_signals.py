@@ -10,7 +10,7 @@ Covers:
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import create_engine, event
@@ -133,9 +133,9 @@ def _seed_interview_sessions(db, user_id):
             question_count=3,
             questions=json.dumps(questions),
             answers=json.dumps(answers),
-            created_at=datetime.utcnow() - timedelta(hours=1),
-            started_at=datetime.utcnow() - timedelta(hours=1),
-            completed_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1),
+            started_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1),
+            completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
         db.add(sess)
 

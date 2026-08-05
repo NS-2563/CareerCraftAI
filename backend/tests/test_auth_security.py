@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import pytest
@@ -474,7 +474,7 @@ class TestFailedLoginProtection:
         db_session.refresh(user)
         assert user.failed_login_attempts == settings.MAX_FAILED_LOGIN_ATTEMPTS
         assert user.locked_until is not None
-        assert user.locked_until > datetime.utcnow()
+        assert user.locked_until > datetime.now(timezone.utc).replace(tzinfo=None)
 
     def test_login_while_locked_is_rejected(self, db_session):
         from app.services.auth_service import AuthService
@@ -507,7 +507,7 @@ class TestFailedLoginProtection:
 
         db_session.refresh(user)
 
-        user.locked_until = datetime.utcnow() - timedelta(minutes=1)
+        user.locked_until = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
         db_session.commit()
 
         result = AuthService.login(db_session, user.email, pw)
@@ -517,7 +517,7 @@ class TestFailedLoginProtection:
         from app.services.auth_service import AuthService
         user, pw = self._create_login_user(db_session)
         user.failed_login_attempts = 3
-        user.locked_until = datetime.utcnow() - timedelta(minutes=1)
+        user.locked_until = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
         db_session.commit()
 
         AuthService.login(db_session, user.email, pw)
@@ -529,7 +529,7 @@ class TestFailedLoginProtection:
         from app.services.auth_service import AuthService
         user, pw = self._create_login_user(db_session)
         user.failed_login_attempts = 4
-        user.locked_until = datetime.utcnow() - timedelta(minutes=1)
+        user.locked_until = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
         db_session.commit()
 
         AuthService.login(db_session, user.email, pw)

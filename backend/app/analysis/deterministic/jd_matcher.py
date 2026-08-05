@@ -174,7 +174,7 @@ def _calculate_experience_years(resume: Dict[str, Any]) -> Tuple[int, List[str]]
             domains.add(position.lower().strip())
 
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone
             start_dt = None
             if start and len(str(start)) >= 4:
                 try:
@@ -189,7 +189,7 @@ def _calculate_experience_years(resume: Dict[str, Any]) -> Tuple[int, List[str]]
                             pass
 
             if current or not end:
-                end_dt = datetime.utcnow()
+                end_dt = datetime.now(timezone.utc).replace(tzinfo=None)
             elif end and len(str(end)) >= 4:
                 try:
                     end_dt = datetime.strptime(str(end)[:10], "%Y-%m-%d")

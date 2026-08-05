@@ -13,6 +13,13 @@ DEFAULT_INSECURE_KEYS = {
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
+    # Test environment — set to True by the test harness (e.g. via the TESTING
+    # env var in tests/conftest.py). When True the slowapi Limiter is built
+    # disabled so the real production rate limits never collide across the
+    # automated suite. Production is completely unaffected because it runs with
+    # TESTING=False (the default) and therefore keeps the limiter enabled.
+    TESTING: bool = False
+
     # Database
     DATABASE_URL: str = "sqlite:///./careercraft.db"
 

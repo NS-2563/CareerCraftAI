@@ -1,28 +1,36 @@
 """Migration: Create activity_events table for cross-module activity log.
 
-Safe to call multiple times — uses CREATE TABLE IF NOT EXISTS.
+The table is expressed as a SQLAlchemy Core Table mirrored from the ORM model
+(ActivityEvent), so the DDL is dialect-portable (auto-increment handled by each
+dialect's own mechanism; no SQLite-only AUTOINCREMENT/DATETIME syntax).
+Safe to call multiple times — guarded by a table-existence check and the
+Core create uses checkfirst=True.
 """
 
-from sqlalchemy import text, inspect
-
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, MetaData, String, Table, func, inspect
 
 TABLE_NAME = "activity_events"
 
-CREATE_SQL = """
-CREATE TABLE IF NOT EXISTS activity_events (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    event_type VARCHAR(64) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    description VARCHAR(500),
-    related_entity_type VARCHAR(64),
-    related_entity_id INTEGER,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
-"""
+_META = MetaData()
 
-INDEX_USER_SQL = "CREATE INDEX IF NOT EXISTS ix_activity_events_user_id ON activity_events(user_id)"
-INDEX_TYPE_SQL = "CREATE INDEX IF NOT EXISTS ix_activity_events_event_type ON activity_events(event_type)"
+# Parent table referenced by the user_id FK — lightweight stub so the DDL
+# compiler can resolve "users". It is never created here; only the target
+# table is created below, and the real parent already exists in the DB.
+users = Table("users", _META, Column("id", Integer, primary_key=True))
+
+TABLE = Table(
+    TABLE_NAME,
+    _META,
+    Column("id", Integer, primary_key=True, index=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("event_type", String(64), nullable=False, index=True),
+    Column("title", String(255), nullable=False),
+    Column("description", String(500), nullable=True),
+    Column("related_entity_type", String(64), nullable=True),
+    Column("related_entity_id", Integer, nullable=True),
+    Column("related_job_application_id", Integer, nullable=True, index=True),
+    Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
+)
 
 
 def table_exists(conn, table_name: str) -> bool:
@@ -32,12 +40,10 @@ def table_exists(conn, table_name: str) -> bool:
 
 def upgrade(conn):
     if not table_exists(conn, TABLE_NAME):
-        conn.execute(text(CREATE_SQL))
-        conn.execute(text(INDEX_USER_SQL))
-        conn.execute(text(INDEX_TYPE_SQL))
+        TABLE.create(conn, checkfirst=True)
         return [TABLE_NAME]
     return []
 
 
 def downgrade(conn):
-    conn.execute(text(f"DROP TABLE IF EXISTS {TABLE_NAME}"))
+    TABLE.drop(conn, checkfirst=True)

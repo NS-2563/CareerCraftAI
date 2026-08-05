@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -175,7 +175,9 @@ class AnalyticsService:
                 is_same_value = abs(latest.value - value) < 0.001
                 is_recent = (
                     latest.recorded_at
-                    and latest.recorded_at >= datetime.utcnow() - timedelta(hours=AnalyticsService.DEDUP_INTERVAL_HOURS)
+                    and latest.recorded_at
+                    >= datetime.now(timezone.utc).replace(tzinfo=None)
+                    - timedelta(hours=AnalyticsService.DEDUP_INTERVAL_HOURS)
                 )
                 if is_same_value and is_recent:
                     return
