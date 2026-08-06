@@ -576,7 +576,8 @@ def test_normalize_result():
 # 10. AI JD Matcher — Fallback
 # =========================================================================
 
-def test_analyze_jd_semantic_fallback_no_provider():
+@patch("app.providers.factory.get_provider", side_effect=ValueError("AI provider not configured"))
+def test_analyze_jd_semantic_fallback_no_provider(mock_get_provider):
     from app.analysis.ai.jd_matcher import analyze_jd_semantic
 
     result = analyze_jd_semantic(SAMPLE_RESUME_GOOD, SAMPLE_JD_TEXT, {"overall_match_score": 50})
@@ -735,7 +736,8 @@ def test_analyze_endpoint_success(client, auth_headers):
     assert data["ai_semantic_assessment"] is None
 
 
-def test_analyze_endpoint_with_ai(client, auth_headers):
+@patch("app.providers.factory.get_provider", side_effect=ValueError("AI provider not configured"))
+def test_analyze_endpoint_with_ai(mock_get_provider, client, auth_headers):
     response = client.post(
         "/api/jd-match/analyze",
         json={
@@ -750,6 +752,7 @@ def test_analyze_endpoint_with_ai(client, auth_headers):
     data = response.json()
     assert data["ai_semantic_assessment"] is not None
     assert data["ai_semantic_assessment"]["semantic_fit"] == "unavailable"
+    assert data["ai_semantic_assessment"]["overall_match"] == 0
 
 
 def test_analyze_endpoint_with_resume_id(client, auth_headers, test_resume):

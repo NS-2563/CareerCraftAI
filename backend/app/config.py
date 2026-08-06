@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     # Suggestions
     SUGGESTION_FOLLOW_UP_DAYS: int = 7
 
+    # Internal job trigger secret — shared secret that an external scheduler
+    # (Render Cron Jobs / scheduled GitHub Actions workflow) must send in the
+    # X-Internal-Secret header to call POST /api/internal/run-daily-suggestions.
+    # This is NOT the user JWT; it authenticates machine-to-machine calls only.
+    # When empty the endpoint fails closed (503) until configured in production.
+    INTERNAL_JOB_SECRET: str = ""
+
     # Communication thread-summary overdue rule: the conversation is flagged
     # "response overdue" when the most recent message is inbound and MORE than
     # this many whole days have passed with no outbound reply (strictly >).

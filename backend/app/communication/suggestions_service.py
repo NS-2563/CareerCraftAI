@@ -1,15 +1,46 @@
 from datetime import datetime, timedelta, timezone
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, not_
 from typing import List, Optional
 
 from app.config import settings
 from app.communication.models import CommunicationSuggestion, CommunicationMessage
+from app.database import SessionLocal
 from app.models.job_application import JobApplication
 from app.schemas.job_tracker import JobStatus
 from app.utils.exceptions import NotFoundException
 
+logger = logging.getLogger(__name__)
+
 _TERMINAL_STATUSES = {JobStatus.OFFER, JobStatus.ACCEPTED, JobStatus.REJECTED, JobStatus.WITHDRAWN}
+
+
+def run_daily_suggestion_check(session_factory=SessionLocal):
+    """Run the daily follow-up suggestion check in its own DB session.
+
+    This is the shared entry point that the old in-process APScheduler job
+    called. The HTTP trigger (POST /api/internal/run-daily-suggestions) runs
+    the exact same logic via ``check_and_create_suggestions`` against a
+    request-scoped session; any future non-HTTP trigger (a one-off script, a
+    second process) can call this function instead. Both paths funnel into the
+    same ``check_and_create_suggestions`` implementation.
+
+    Returns the number of suggestions created. Unlike the old scheduler job,
+    exceptions are re-raised (after logging) so the caller — an external
+    scheduler with retry/alerting — knows the run failed.
+    """
+    db = session_factory()
+    try:
+        count = check_and_create_suggestions(db)
+        if count:
+            logger.info("Created %d follow-up suggestion(s)", count)
+        return count
+    except Exception:
+        logger.exception("Follow-up suggestion check failed")
+        raise
+    finally:
+        db.close()
 
 
 def get_active_suggestions(db: Session, user_id: int) -> List[dict]:
