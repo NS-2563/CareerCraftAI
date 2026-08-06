@@ -2979,7 +2979,8 @@ def test_analyze_resume_fallback_no_fabricated_scores():
     from app.providers.gemini import GeminiProvider
     from unittest.mock import patch, MagicMock
 
-    provider = GeminiProvider()
+    with patch.object(GeminiProvider, "__init__", lambda self: None):
+        provider = GeminiProvider()
 
     with patch.object(provider, "_generate_content", return_value="not valid json"):
         result = provider.analyze_resume({"test": "data"})
